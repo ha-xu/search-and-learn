@@ -9,4 +9,5 @@
 
 # 下面写你的计算或启动命令
 echo "Job started"
-bash
+
+nvidia-smi
