@@ -19,7 +19,7 @@ nvidia-smi
 
 # 下面写你的计算或启动命令
 echo "Job started"
-cd /home/zx1875/efficientAI/search_and_learn
+cd /home/zx1875/efficientai/search_and_learn
 git pull 
 # activate conda environment
 conda activate sal
