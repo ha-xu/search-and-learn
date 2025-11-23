@@ -4,7 +4,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=04:00:00
 #SBATCH --job-name=myjob
-#SBATCH --output=log.out
+#SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
+#SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
 
 # 下面写你的计算或启动命令
 echo "Job started"
