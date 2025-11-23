@@ -19,7 +19,7 @@ nvidia-smi
 
 # 下面写你的计算或启动命令
 echo "Job started"
-cd /home/zx1875/EfficientAI/search_and_learn
+cd /home/zx1875/efficientAI/search_and_learn
 git pull 
 # activate conda environment
 conda activate sal
@@ -27,4 +27,4 @@ conda activate sal
 # run your script
 export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
 
-python scripts/test_time_compute.py $CONFIG --push_to_hub=true
+python scripts/test_time_compute.py $CONFIG 
