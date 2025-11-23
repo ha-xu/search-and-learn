@@ -51,6 +51,7 @@ def main():
         enable_prefix_caching=True,
         seed=config.seed,
         tensor_parallel_size=num_gpus,
+        max_model_length=config.max_model_length,
     )
     prm = load_prm(config)
 
