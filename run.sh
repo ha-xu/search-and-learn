@@ -7,6 +7,12 @@
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
 
+# 1. 创建日志目录 (如果不存在)
+mkdir -p /scratch/zx1875/slurm_logs
+
+# 2. 打印任务信息
+echo "Job starting on $(hostname)"
+echo "Job ID: $SLURM_JOB_ID"
 # 下面写你的计算或启动命令
 echo "Job started"
 
