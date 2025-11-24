@@ -23,10 +23,9 @@ if [ ! -d "/home/zx1875/efficientai/search-and-learn" ]; then
   exit 2
 fi
 
-source /home/zx1875/miniconda3/etc/profile.d/conda.sh || true
+source /home/zx1875/efficientai/miniconda3/etc/profile.d/conda.sh || true
 conda activate sal || { echo "activate conda env failed"; exit 3; }
 
-cd /scratch/zx1875/search-and-learn
 git fetch --all --prune
 git reset --hard origin/main
 
