@@ -15,6 +15,7 @@
 
 import numpy as np
 from vllm import LLM, SamplingParams
+import time
 
 from sal.config import Config
 from sal.models.reward_models import PRM
@@ -23,6 +24,7 @@ from sal.utils.score import aggregate_scores
 
 def best_of_n(x, config: Config, llm: LLM, prm: PRM):
     tokenizer = llm.get_tokenizer()
+    total_start = time.perf_counter()
 
     convs = [
         [
@@ -54,11 +56,13 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
         n=1,  # Since we've already duplicated the prompt_token_ids, we only need to generate 1 completion per prompt
     )
 
+    llm_start = time.perf_counter()
     responses = llm.generate(
         templated_convs,
         sampling_params=sampling_params,
         use_tqdm=False,
     )
+    llm_time = time.perf_counter() - llm_start
     if len(responses) != len(x["problem"]) * config.n:
         raise ValueError(
             f"Generated {len(responses)} responses instead of {len(x['problem'] * config.n)}"
@@ -81,7 +85,9 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
         if len(c) != config.n:
             raise ValueError(f"Generated {len(c)} completions instead of {config.n}")
 
+    prm_start = time.perf_counter()
     scores = prm.score(x["problem"], completions)
+    prm_time = time.perf_counter() - prm_start
     agg_scores = [
         [aggregate_scores(s, config.agg_strategy) for s in score] for score in scores
     ]
@@ -93,5 +99,13 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
     x["scores"] = scores
     x["pred"] = pred
     x["completion_tokens"] = completion_tokens
+
+    total_time = time.perf_counter() - total_start
+
+    # Insert timing information (seconds) into the returned example
+    x.setdefault("timings", {})
+    x["timings"]["llm_time"] = llm_time
+    x["timings"]["prm_time"] = prm_time
+    x["timings"]["total_time"] = total_time
 
     return x
