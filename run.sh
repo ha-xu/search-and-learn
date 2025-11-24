@@ -7,6 +7,7 @@
 #SBATCH --job-name=myjob
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
+#SBATCH --chdir=/scratch/zx1875/search-and-learn 
 
 # 1. 创建日志目录 (如果不存在)
 mkdir -p /scratch/zx1875/slurm_logs
@@ -17,14 +18,17 @@ echo "Job ID: $SLURM_JOB_ID"
 
 nvidia-smi
 
-# 下面写你的计算或启动命令
-echo "Job started"
-pwd
-cd /home/zx1875/efficientai/search-and-learn
-git pull 
-# activate conda environment
-conda create -n sal python=3.11 && conda activate sal
-pip install -e '.[dev]'
+if [ ! -d "/scratch/zx1875/search-and-learn" ]; then
+  echo "ERROR: workdir /scratch/zx1875/search-and-learn not found. Exiting."
+  exit 2
+fi
+
+source /home/zx1875/miniconda3/etc/profile.d/conda.sh || true
+conda activate sal || { echo "activate conda env failed"; exit 3; }
+
+cd /scratch/zx1875/search-and-learn
+git fetch --all --prune
+git reset --hard origin/main
 
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
