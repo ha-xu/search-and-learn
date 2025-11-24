@@ -22,7 +22,8 @@ echo "Job started"
 cd /home/zx1875/efficientai/search-and-learn
 git pull 
 # activate conda environment
-conda activate sal
+conda create -n sal python=3.11 && conda activate sal
+pip install -e '.[dev]'
 
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
