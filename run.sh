@@ -7,7 +7,7 @@
 #SBATCH --job-name=myjob
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
-#SBATCH --chdir=/scratch/zx1875/search-and-learn 
+#SBATCH --chdir=/scratch/zx1875/efficientai/search-and-learn 
 
 # 1. 创建日志目录 (如果不存在)
 mkdir -p /scratch/zx1875/slurm_logs
@@ -18,8 +18,8 @@ echo "Job ID: $SLURM_JOB_ID"
 
 nvidia-smi
 
-if [ ! -d "/scratch/zx1875/search-and-learn" ]; then
-  echo "ERROR: workdir /scratch/zx1875/search-and-learn not found. Exiting."
+if [ ! -d "/scratch/zx1875/efficientai/search-and-learn" ]; then
+  echo "ERROR: workdir /scratch/zx1875/efficientai/search-and-learn not found. Exiting."
   exit 2
 fi
 
