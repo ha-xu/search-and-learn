@@ -24,8 +24,7 @@ git pull
 # activate conda environment
 conda activate sal
 
-huggingface-cli login --token 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
-
+huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
 export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
 
