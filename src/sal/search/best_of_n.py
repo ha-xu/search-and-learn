@@ -99,13 +99,25 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
     x["scores"] = scores
     x["pred"] = pred
     x["completion_tokens"] = completion_tokens
-
+    
     total_time = time.perf_counter() - total_start
 
-    # Insert timing information (seconds) into the returned example
-    x.setdefault("timings", {})
-    x["timings"]["llm_time"] = llm_time
-    x["timings"]["prm_time"] = prm_time
-    x["timings"]["total_time"] = total_time
+    x["llm_time"] = llm_time
+    x["prm_time"] = prm_time
+    x["total_time"] = total_time
 
     return x
+
+
+    # Populate timings dict (seconds)
+    # t: dict = {}
+
+    # t["llm_time"] = llm_time
+    # t["prm_time"] = prm_time
+    # t["total_time"] = total_time
+
+    # # By default maintain existing behavior (return only x) for compatibility with dataset.map
+    # if return_timings:
+    #     return x, t
+
+    

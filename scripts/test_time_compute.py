@@ -67,6 +67,7 @@ def main():
     dataset = score(dataset, config)
 
     save_dataset(dataset, config)
+    
     logger.info("Done 🔥!")
 
 
