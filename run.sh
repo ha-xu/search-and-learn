@@ -19,12 +19,16 @@ nvidia-smi
 
 # 下面写你的计算或启动命令
 echo "Job started"
-cd /home/zx1875/efficientai/search_and_learn
+cd /home/zx1875/efficientai/search-and-learn
 git pull 
 # activate conda environment
 conda activate sal
+
+huggingface-cli login --token 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
 
 # run your script
 export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
 
 python scripts/test_time_compute.py $CONFIG 
+
+echo "Job finished."
