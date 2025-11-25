@@ -3,7 +3,7 @@
 #SBATCH --partition=c12m85-a100-1
 #SBATCH --gres=gpu:1
 #SBATCH --time=04:00:00
-#SBATCH --mem=32G  
+#SBATCH --mem=48G  
 #SBATCH --job-name=myjob
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
