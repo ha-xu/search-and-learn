@@ -100,12 +100,15 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
     x["pred"] = pred
     x["completion_tokens"] = completion_tokens
     
+    # 此处计算的时间，为一个batch的总时间除以batch size，得到平均每个样本的时间 （在一个batch内的所有样本共享同一个时间）
     total_time = time.perf_counter() - total_start
-
-    x["llm_time"] = llm_time
-    x["prm_time"] = prm_time
-    x["total_time"] = total_time
-
+    batch_size = len(x["problem"])
+    avg_llm_time_per_sample_batch = llm_time / batch_size
+    x["avg_llm_time_per_sample_batch"] = [avg_llm_time_per_sample_batch] * batch_size
+    avg_prm_time_per_sample_batch = prm_time / batch_size
+    x["avg_prm_time_per_sample_batch"] = [avg_prm_time_per_sample_batch] * batch_size
+    avg_time_per_sample_batch = total_time / batch_size
+    x["avg_time_per_sample_batch"] = [avg_time_per_sample_batch] * batch_size
     return x
 
 
