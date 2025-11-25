@@ -37,4 +37,13 @@ python scripts/test_time_compute.py $CONFIG
 
 echo data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
 
+# Evaluation of the accuracy
+cd /home/zx1875/efficientai/Qwen2.5-Math/evaluation
+conda create -n qwen-math python=3.11 && conda activate qwen-math
+cd latex2sympy
+pip install -e .
+cd ..
+pip install -r requirements.txt 
+python evaluate.py --file_path /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
+
 echo "Job finished."

@@ -111,16 +111,4 @@ def best_of_n(x, config: Config, llm: LLM, prm: PRM):
     x["avg_time_per_sample_batch"] = [avg_time_per_sample_batch] * batch_size
     return x
 
-
-    # Populate timings dict (seconds)
-    # t: dict = {}
-
-    # t["llm_time"] = llm_time
-    # t["prm_time"] = prm_time
-    # t["total_time"] = total_time
-
-    # # By default maintain existing behavior (return only x) for compatibility with dataset.map
-    # if return_timings:
-    #     return x, t
-
     
