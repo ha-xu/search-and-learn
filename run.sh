@@ -46,4 +46,7 @@ cd ..
 pip install -r requirements.txt 
 python evaluate.py --file_path /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
 
+# print time
+python /home/zx1875/efficientai/search-and-learn/staticalprint.py /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
+
 echo "Job finished."
