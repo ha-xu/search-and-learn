@@ -55,7 +55,7 @@ for n in 4 16 64 256; do
     cd ..
     pip install -r requirements.txt 
     python evaluate.py --file_path $RESULTDIR/best_of_n_completions.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
-
+    conda deactivate
     # print time
     python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
 
