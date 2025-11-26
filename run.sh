@@ -32,21 +32,34 @@ git reset --hard origin/main
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
 export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
+export SEED=0 
 
-python scripts/test_time_compute.py $CONFIG 
+export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/
 
-echo data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
+for n in 4 16 64 256; do
+    python scripts/test_time_compute.py $CONFIG \
+        --n=$n \
+        --num_samples=500 \
+        --seed=$SEED
+    
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" > $RESULTDIR/results_n${n}_seed${SEED}.txt
 
-# Evaluation of the accuracy
-cd /home/zx1875/efficientai/Qwen2.5-Math/evaluation
-conda create -n qwen-math python=3.11 && conda activate qwen-math
-cd latex2sympy
-pip install -e .
-cd ..
-pip install -r requirements.txt 
-python evaluate.py --file_path /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
+    # echo $RESULTDIR/best_of_n_completions.jsonl
 
-# print time
-python /home/zx1875/efficientai/search-and-learn/staticalprint.py /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/best_of_n_completions.jsonl
+    # Evaluation of the accuracy
+    cd /home/zx1875/efficientai/Qwen2.5-Math/evaluation
+    conda create -n qwen-math python=3.11 && conda activate qwen-math
+    cd latex2sympy
+    pip install -e .
+    cd ..
+    pip install -r requirements.txt 
+    python evaluate.py --file_path $RESULTDIR/best_of_n_completions.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
+
+    # print time
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
+
+done
+
 
 echo "job finished."
