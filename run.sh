@@ -44,7 +44,7 @@ for n in 4 16 64 256; do
         --num_samples=500 \
         --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" > $RESULTDIR/results_n${n}_seed${SEED}.txt
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" >> $RESULTDIR/results_${CONFIG}.txt
 
     # echo $RESULTDIR/best_of_n_completions.jsonl
 
@@ -55,10 +55,10 @@ for n in 4 16 64 256; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
+    python evaluate.py --file_path $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_${CONFIG}.txt
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_n${n}_seed${SEED}.txt
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_${CONFIG}.txt
 
 done
 
