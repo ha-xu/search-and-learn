@@ -32,22 +32,25 @@ git reset --hard origin/main
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
 
-export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
+export MODEL=Llama-3.2-1B-Instruct
+export APPROACH=beam_search
+
+export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
 
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
-export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
-for n in 4 16 64 256; do
+for n in 4 16 64; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=500 \
         --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" >> $RESULTDIR/results_${APPROACH}_${APPROACH}.txt
 
-    # echo $RESULTDIR/best_of_n_completions.jsonl
+    # echo $RESULTDIR/beam_search_completions.jsonl
 
     # Evaluation of the accuracy
     cd $EVALDIR
@@ -56,10 +59,10 @@ for n in 4 16 64 256; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTDIR/results_${APPROACH}_${APPROACH}.txt
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTDIR/results_${APPROACH}_${APPROACH}.txt
 
 done
 
