@@ -31,6 +31,7 @@ git reset --hard origin/main
 
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
+
 export CONFIG=recipes/Llama-3.2-1B-Instruct/best_of_n.yaml
 export SEED=0 
 
@@ -44,7 +45,7 @@ for n in 4 16 64 256; do
         --num_samples=500 \
         --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" >> $RESULTDIR/results_${CONFIG}.txt
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED" >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
 
     # echo $RESULTDIR/best_of_n_completions.jsonl
 
@@ -55,10 +56,10 @@ for n in 4 16 64 256; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_${CONFIG}.txt
+    python evaluate.py --file_path $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_${CONFIG}.txt
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/best_of_n_completions_${n}.jsonl >> $RESULTDIR/results_Llama-3.2-1B-Instruct_best_of_n.txt
 
 done
 
