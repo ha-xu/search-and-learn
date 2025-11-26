@@ -36,8 +36,9 @@ export SEED=0
 
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-1B-Instruct/
-
+export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 for n in 4 16 64 256; do
+    cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=500 \
@@ -48,7 +49,7 @@ for n in 4 16 64 256; do
     # echo $RESULTDIR/best_of_n_completions.jsonl
 
     # Evaluation of the accuracy
-    cd /home/zx1875/efficientai/Qwen2.5-Math/evaluation
+    cd $EVALDIR
     conda create -n qwen-math python=3.11 && conda activate qwen-math
     cd latex2sympy
     pip install -e .
