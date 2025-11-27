@@ -123,8 +123,6 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
             beam.current_text += beam.next_texts[0]
             beam.history.append(beam.next_texts[0])
 
-            # 在此处插入数学基础数学逻辑检测
-
             if (
                 beam.stop_reasons[0] == "EOS"
                 or beam.stop_reasons[0] == "length"
@@ -132,7 +130,6 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
             ):
                 beam.completed = True
                 completed_beams.append(beam)
-            # 如果有数学上的错误，不将其评分
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
