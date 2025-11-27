@@ -20,7 +20,7 @@ from vllm import LLM
 
 from sal.config import Config
 from sal.models.reward_models import load_prm
-from sal.search import beam_search, best_of_n, dvts
+from sal.search import beam_search, beam_search_prune, best_of_n, dvts
 from sal.utils.data import get_dataset, save_dataset
 from sal.utils.parser import H4ArgumentParser
 from sal.utils.score import score
@@ -33,6 +33,7 @@ logger.setLevel(logging.INFO)
 
 APPROACHES = {
     "beam_search": beam_search,
+    "beam_search_prune": beam_search_prune,
     "dvts": dvts,
     "best_of_n": best_of_n,
 }

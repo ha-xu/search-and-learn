@@ -30,7 +30,7 @@ logger = logging.getLogger()
 from sal.utils.score import aggregate_scores
 
 
-def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
+def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -210,11 +210,11 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
     return completed_beams
 
 
-def beam_search(examples, config: Config, llm: LLM, prm: PRM):
+def beam_search_prune(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
 
     start_time = time.perf_counter()
-    beam_results = _beam_search(problems, config, llm, prm)
+    beam_results = _beam_search_prune(problems, config, llm, prm)
     end_time = time.perf_counter()
     total_time = end_time - start_time
     # Group together alike beams and store in the dataset
