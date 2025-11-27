@@ -45,7 +45,7 @@ export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
 # Clear previous results file
 echo > $RESULTDIR/results_${MODEL}_${APPROACH}.txt
-
+echo > $RESULTDIR/${APPROACH}_completions_${n}.jsonl
 
 for n in 4 16 64; do
     cd $SEARCHANDLEARN
