@@ -42,6 +42,8 @@ export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
+echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
+
 # Clear previous results file
 echo > $RESULTDIR/results_${MODEL}_${APPROACH}.txt
 
