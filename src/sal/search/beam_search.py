@@ -15,7 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
-from time import time
+import time
 
 import numpy as np
 from tqdm import tqdm
