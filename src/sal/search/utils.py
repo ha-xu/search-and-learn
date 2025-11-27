@@ -75,6 +75,7 @@ class GenResult:
     first_step_stop_reason: str
     lookahead_text: str
     stop_reason: str | None
+    total_completion_tokens: int  # modified : token count
 
 
 def generate_k_steps(
