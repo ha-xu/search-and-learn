@@ -139,9 +139,9 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
         for bean in active_beams:
             # logger.debug(f"Current beam text: {bean.current_text}")
             text_len = len(bean.current_text.split())
-            logger.debug(f"Current beam text length (in words): {text_len}")
+            logger.info(f"Current beam text length (in words): {text_len}")
             token_logprobs = bean.logprobs
-            logger.debug(f"Current beam logprobs: {token_logprobs}")
+            logger.info(f"Current beam logprobs: {token_logprobs}")
 
         # Score all active beams
 
