@@ -43,8 +43,8 @@ export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODE
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
 # Clear previous results file
-echo > $RESULTDIR/results_${APPROACH}_${APPROACH}.txt
-
+echo > $RESULTDIR/results_${MODEL}_${APPROACH}.txt
+  
 
 for n in 4; do
     cd $SEARCHANDLEARN
