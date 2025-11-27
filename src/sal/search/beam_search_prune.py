@@ -147,7 +147,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             # 注意：需要解析结构以获取 rank=1 的 logprob
             logprob_values = []
             for token_dict in token_logprobs:
-                logger.info(f"Token logprob entry: {token_dict}")
+                # logger.info(f"Token logprob entry: {token_dict}")
 
                 # 提取 Logprob 对象 (即字典中的值)
                 logprob_obj = list(token_dict.values())[0]
@@ -156,17 +156,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
                 prob_value = logprob_obj.logprob
                 
                 logprob_values.append(prob_value)
-                # # 假设 step_list 是一个列表，其中只包含一个字典 {token_id: Logprob}
-                
-                # # 1. 提取出最内层的字典
-                # token_dict = step_list[0] 
-                
-                # # 2. 现在 token_dict 是字典了，可以使用 .values()
-                # #    提取出 Logprob 对象
-                # logprob_obj = list(token_dict.values())[0] 
-                
-                # # 3. 提取 logprob 值
-                # logprob_values.append(logprob_obj.logprob)
+
 
             L = len(logprob_values)
             logger.info(f"Number of tokens in the chain (L): {L}")
