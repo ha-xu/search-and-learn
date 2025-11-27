@@ -136,13 +136,15 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
+        beam_confidences = []
+        beam_variances = []
         for bean in active_beams:
             # logger.debug(f"Current beam text: {bean.current_text}")
             text_len = len(bean.current_text.split())
-            logger.info(f"Current beam text length (in words): {text_len}")
+            # logger.info(f"Current beam text length (in words): {text_len}")
             token_logprobs = bean.logprobs[0]
             # logger.info(f"Current beam text: {token_logprobs}")
-            logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
+            # logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
             # 1. 提取 logprob 值
             # 注意：需要解析结构以获取 rank=1 的 logprob
             logprob_values = []
@@ -159,8 +161,8 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
 
 
             L = len(logprob_values)
-            logger.info(f"Number of tokens in the chain (L): {L}")
-            logger.info(f"Logprob values: {logprob_values}")
+            # logger.info(f"Number of tokens in the chain (L): {L}")
+            # logger.info(f"Logprob values: {logprob_values}")
             if L == 0:
                 # 处理空链情况
                 overall_confidence = 0.0
@@ -172,10 +174,14 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
                 # 3. 计算方差
                 variance = np.var(logprob_values, ddof=1) # ddof=1 计算样本方差 (L-1)
     
-            logger.info(f"Chain Overall Confidence (Avg Log P): {overall_confidence}")
-            logger.info(f"Chain Log P Variance: {variance}")
+            # logger.info(f"Chain Overall Confidence (Avg Log P): {overall_confidence}")
+            # logger.info(f"Chain Log P Variance: {variance}")
+            beam_confidences.append(overall_confidence)
+            beam_variances.append(variance)
 
         # Score all active beams
+        logger.info(f"Beam Confidences (Avg Log P): {beam_confidences}")
+        logger.info(f"Beam Log P Variances: {beam_variances}")
 
         scores = prm.score(prompts, completions)
 
@@ -211,7 +217,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
 
         # Get indices for top (config.n / config.beam_width) completions
         top_indices = np.argsort(np.array(agg_scores).flatten())[
-            -(config.n // config.beam_width) :
+            -(config.n // config.beam_width):
         ]
 
         for idx, beam in enumerate(active_beams):
