@@ -34,16 +34,19 @@ def read_time_from_jsonl(file_path):
                     llm_time_key = 'avg_llm_time_per_sample_batch'
                     prm_time_key = 'avg_prm_time_per_sample_batch'
                     total_time_key = 'avg_time_per_sample_batch'
+                    total_time_beam_search_key = 'total_time_beam_search'
                     
                     tokens_count = data.get(tokens_count_key, None)
                     llm_time = data.get(llm_time_key, None)
                     prm_time = data.get(prm_time_key, None)
                     total_time = data.get(total_time_key, None)
+                    total_time_beam_search = data.get(total_time_beam_search_key, None)
                     
                     tokens_counts.append(sum(tokens_count))
                     llm_times.append(llm_time)
                     prm_times.append(prm_time)
                     total_times.append(total_time)
+                    total_time_beam_search.append(total_time_beam_search)
                 except json.JSONDecodeError:
                     print(f"错误: 样本 {line_number} 不是有效的 JSON 格式，已跳过。", file=sys.stderr)
                 except Exception as e:
@@ -63,6 +66,9 @@ def read_time_from_jsonl(file_path):
         if total_times:
             avg_total_time = sum(total_times) / len(total_times)
             print(f"平均 总时间: {avg_total_time:.6f} 秒")
+        if total_time_beam_search:
+            avg_total_time_beam_search = sum(total_time_beam_search) / len(total_time_beam_search)
+            print(f"平均 Beam Search 总时间: {avg_total_time_beam_search:.6f} 秒")
     except IOError as e:
         print(f"错误: 无法打开或读取文件: {e}", file=sys.stderr)
 

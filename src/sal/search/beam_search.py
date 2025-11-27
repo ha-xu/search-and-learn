@@ -15,6 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
+from time import time
 
 import numpy as np
 from tqdm import tqdm
@@ -199,15 +200,19 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
 
 def beam_search(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
-    beam_results = _beam_search(problems, config, llm, prm)
 
+    start_time = time.perf_counter()
+    beam_results = _beam_search(problems, config, llm, prm)
+    end_time = time.perf_counter()
+    total_time = end_time - start_time
     # Group together alike beams and store in the dataset
     grouped_results = defaultdict(list)
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": []}
-
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": []}
+    num_problems = len(problems)
+    time_per_problem = total_time / num_problems
     for p in problems:
         beams = grouped_results[p]
         completions = [b.current_text for b in beams]
@@ -219,5 +224,8 @@ def beam_search(examples, config: Config, llm: LLM, prm: PRM):
         results["scores"].append([b.all_scores for b in beams])
         results["pred"].append(pred)
         results["completion_tokens"].append([b.completion_tokens for b in beams])
+
+        # Add average time per problem
+        results["total_time_beam_search"].append(time_per_problem)
 
     return results
