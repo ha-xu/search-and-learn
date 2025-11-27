@@ -65,6 +65,7 @@ class Beam:
     history: list[str]
     completed: bool = False
     completion_tokens: int = 0
+    logprobs: list[dict] = None
 
 
 @dataclass
@@ -139,6 +140,8 @@ def generate_k_steps(
             gen_result.stop_reason = output.outputs[0].stop_reason
             if gen_result.stop_reason is None:
                 gen_result.stop_reason = "EOS"
+            logprobs = output.outputs[0].logprobs
+            gen_result.logprobs.append(logprobs)
 
     outputs: list[Beam] = []
 
@@ -149,6 +152,7 @@ def generate_k_steps(
         lookahead_texts = []
         # 【修改点 D】：初始化 Beam 对象的 completion_tokens 属性
         total_tokens_for_beam = 0
+        total_logprobs_for_beam = []
         for j in range(beam_width):
             gen_result = gen_results[counter]
             next_texts.append(gen_result.first_step_text)
@@ -159,6 +163,7 @@ def generate_k_steps(
             if j == 0: # 只从第一个 GenResult 提取本次生成的总 Token 数
                  total_tokens_for_beam = gen_result.total_completion_tokens
             counter += 1
+            total_logprobs_for_beam.extend(gen_result.logprobs)
 
         beam_result = Beam(
             prompt=text,
@@ -174,6 +179,7 @@ def generate_k_steps(
             history=[],
             # 【修改点 F】：将 Token 计数添加到 Beam 结果中
             completion_tokens=total_tokens_for_beam,
+            logprobs=total_logprobs_for_beam,
         )
         outputs.append(beam_result)
 
