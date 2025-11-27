@@ -141,7 +141,31 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             text_len = len(bean.current_text.split())
             logger.info(f"Current beam text length (in words): {text_len}")
             token_logprobs = bean.logprobs
-            logger.info(f"Current beam logprobs: {token_logprobs}")
+            logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
+            # 1. 提取 logprob 值
+            # 注意：需要解析结构以获取 rank=1 的 logprob
+            logprob_values = []
+            for step_logprobs in token_logprobs:
+                # 假设每个 step_logprobs 字典只有一个键值对，且就是 rank=1 的 token
+                # 实际上，您需要遍历字典并找到 rank=1 的 logprob
+                # 这里我们简化处理，假设字典中的第一个（也是唯一的）Logprob对象就是我们要的
+                logprob_obj = list(step_logprobs.values())[0] 
+                logprob_values.append(logprob_obj.logprob)
+
+            L = len(logprob_values)
+            if L == 0:
+                # 处理空链情况
+                overall_confidence = 0.0
+                variance = 0.0
+            else:
+                # 2. 计算总体置信度 (平均对数概率)
+                overall_confidence = np.sum(logprob_values) / L
+
+                # 3. 计算方差
+                variance = np.var(logprob_values, ddof=1) # ddof=1 计算样本方差 (L-1)
+    
+            logger.info(f"Chain Overall Confidence (Avg Log P): {overall_confidence}")
+            logger.info(f"Chain Log P Variance: {variance}")
 
         # Score all active beams
 
