@@ -142,7 +142,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             logger.info(f"Current beam text length (in words): {text_len}")
             token_logprobs = bean.logprobs
             logger.info(f"Current beam text: {token_logprobs}")
-            logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
+            logger.info(f"Current beam logprobs length: {len(token_logprobs[0])}")
             # 1. 提取 logprob 值
             # 注意：需要解析结构以获取 rank=1 的 logprob
             logprob_values = []
