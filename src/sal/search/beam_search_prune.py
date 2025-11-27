@@ -125,7 +125,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             beam.completion_tokens += gen_result.completion_tokens
             beam.current_text += beam.next_texts[0]
             beam.history.append(beam.next_texts[0])
-
+            beam.logprobs = gen_result.logprobs
             if (
                 beam.stop_reasons[0] == "EOS"
                 or beam.stop_reasons[0] == "length"
