@@ -141,15 +141,22 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             text_len = len(bean.current_text.split())
             logger.info(f"Current beam text length (in words): {text_len}")
             token_logprobs = bean.logprobs
+            logger.info(f"Current beam text: {token_logprobs}")
             logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
             # 1. 提取 logprob 值
             # 注意：需要解析结构以获取 rank=1 的 logprob
             logprob_values = []
-            for step_logprobs in token_logprobs:
-                # 假设每个 step_logprobs 字典只有一个键值对，且就是 rank=1 的 token
-                # 实际上，您需要遍历字典并找到 rank=1 的 logprob
-                # 这里我们简化处理，假设字典中的第一个（也是唯一的）Logprob对象就是我们要的
-                logprob_obj = list(step_logprobs.values())[0] 
+            for step_list in token_logprobs:
+                # 假设 step_list 是一个列表，其中只包含一个字典 {token_id: Logprob}
+                
+                # 1. 提取出最内层的字典
+                token_dict = step_list[0] 
+                
+                # 2. 现在 token_dict 是字典了，可以使用 .values()
+                #    提取出 Logprob 对象
+                logprob_obj = list(token_dict.values())[0] 
+                
+                # 3. 提取 logprob 值
                 logprob_values.append(logprob_obj.logprob)
 
             L = len(logprob_values)
