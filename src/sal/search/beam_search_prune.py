@@ -170,6 +170,7 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
 
             L = len(logprob_values)
             logger.info(f"Number of tokens in the chain (L): {L}")
+            logger.info(f"Logprob values: {logprob_values}")
             if L == 0:
                 # 处理空链情况
                 overall_confidence = 0.0
