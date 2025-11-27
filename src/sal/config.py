@@ -23,7 +23,7 @@ from sal.utils.hub import get_dataset_revisions
 
 @dataclass
 class Config:
-    approach: Literal["best_of_n", "beam_search", "dvts"] = "best_of_n"
+    approach: Literal["best_of_n", "beam_search", "dvts", "beam_search_prune"] = "best_of_n"
     model_path: str = "meta-llama/Llama-3.2-1B-Instruct"
     gpu_memory_utilization: float = (
         0.2  # vllm is allocated 0.2 of GPU memory, the PRM uses the rest
@@ -93,6 +93,8 @@ class Config:
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
             elif self.approach == "best_of_n":
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--seed-{self.seed}--agg_strategy-{self.agg_strategy}"
+            elif self.approach == "beam_search_prune":
+                self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
             else:
                 raise ValueError(f"Unknown approach {self.approach}")
             if self.dataset_start is not None and self.dataset_end is not None:
