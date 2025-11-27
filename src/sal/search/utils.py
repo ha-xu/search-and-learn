@@ -99,6 +99,7 @@ def generate_k_steps(
                 first_step_stop_reason=None,
                 # modified : token count
                 total_completion_tokens=0,
+                logprobs=[],
             )
             gen_results.append(gen_result)
 
