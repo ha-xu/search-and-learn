@@ -1,7 +1,7 @@
 # refer to src/sal/config.py for more options
 
 filter_duplicates: true
-approach: beam_search
+approach: beam_search_prune
 n: 4
 search_batch_size: 1  # DO NOT CHANGE!
 num_samples: 10       # REMOVE THIS LINE TO RUN ON THE WHOLE DATASET
