@@ -77,6 +77,7 @@ class GenResult:
     lookahead_text: str
     stop_reason: str | None
     total_completion_tokens: int  # modified : token count
+    logprobs: list[dict]
 
 
 def generate_k_steps(
