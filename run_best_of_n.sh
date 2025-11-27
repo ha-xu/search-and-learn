@@ -41,6 +41,10 @@ export SEED=0
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
+
+# Clear previous results file
+echo > $RESULTDIR/results_${APPROACH}_${APPROACH}.txt
+
 for n in 4 16 64; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
