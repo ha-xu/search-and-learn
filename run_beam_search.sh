@@ -37,25 +37,27 @@ export APPROACH=beam_search
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=100
+export SAMPLES=500
 
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
+export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
+
 echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
 
 # Clear previous results file
-echo > $RESULTDIR/results_${MODEL}_${APPROACH}.txt
+echo > $RESULTCOLLECTIONFILE
 
-for n in 4 16 64; do
+for n in 4; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=$SAMPLES \
         --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTDIR/results_${MODEL}_${APPROACH}.txt
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
     # echo $RESULTDIR/beam_search_completions.jsonl
 
@@ -66,10 +68,10 @@ for n in 4 16 64; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTDIR/results_${MODEL}_${APPROACH}.txt
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTDIR/results_${MODEL}_${APPROACH}.txt
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 
