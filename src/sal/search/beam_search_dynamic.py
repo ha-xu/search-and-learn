@@ -82,7 +82,7 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
         current_beam_width = int(config.n - reduction_amount)
         current_beam_width = max(min_beam_width, current_beam_width) # 确保不小于最小值
         
-        logger.debug(f"Iteration {i}: Setting beam width to {current_beam_width}")
+        logger.info(f"Iteration {i}: Setting beam width to {current_beam_width}")
         # Duplicate active beams to ensure that we have config.n beams per iteration
         if len(active_beams) != current_beam_width:
             repeats = (current_beam_width // len(active_beams)) + 1
