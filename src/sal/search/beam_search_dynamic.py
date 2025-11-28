@@ -76,8 +76,12 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
         contraction_factor = i / config.num_iterations
         
         # 计算当前要减少的量，并向下取整
-        reduction_amount = (config.n - min_beam_width) * contraction_factor
-        
+
+        if i < 10:
+            reduction_amount = 0
+        else:
+            reduction_amount = (config.n - min_beam_width) * contraction_factor
+
         # 最终的当前目标集束宽度 k_i
         current_beam_width = int(config.n - reduction_amount)
         current_beam_width = max(min_beam_width, current_beam_width) # 确保不小于最小值
@@ -105,7 +109,6 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
                 max_tokens=config.max_tokens,
                 top_p=config.top_p,
                 n=1,
-                logprobs=1,
             )
 
         convs = [
@@ -137,7 +140,7 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
             beam.completion_tokens += gen_result.completion_tokens
             beam.current_text += beam.next_texts[0]
             beam.history.append(beam.next_texts[0])
-            beam.logprobs = gen_result.logprobs
+
             if (
                 beam.stop_reasons[0] == "EOS"
                 or beam.stop_reasons[0] == "length"
@@ -148,70 +151,15 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
-        beam_confidences = []
-        beam_variances = []
-        for beam in active_beams:
-            # logger.debug(f"Current beam text: {beam.current_text}")
-            # text_len = len(beam.current_text.split())
-            # logger.info(f"Current beam text length (in words): {text_len}")
-            token_logprobs = beam.logprobs[0]
-            # logger.info(f"Current beam text: {token_logprobs}")
-            # logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
-            # 1. 提取 logprob 值
-            # 注意：需要解析结构以获取 rank=1 的 logprob
-            logprob_values = []
-            for token_dict in token_logprobs:
-                # logger.info(f"Token logprob entry: {token_dict}")
+        scores = prm.score(prompts, completions)
 
-                # 提取 Logprob 对象 (即字典中的值)
-                logprob_obj = list(token_dict.values())[0]
-                
-                # 提取 logprob 数值
-                prob_value = logprob_obj.logprob
-                
-                logprob_values.append(prob_value)
+        agg_scores = [
+            [aggregate_scores(s, config.agg_strategy) for s in score]
+            for score in scores
+        ]
 
-
-            L = len(logprob_values)
-            # logger.info(f"Number of tokens in the chain (L): {L}")
-            # logger.info(f"Logprob values: {logprob_values}")
-            if L == 0:
-                # 处理空链情况
-                overall_confidence = 0.0
-                variance = 0.0
-            else:
-                # 2. 计算总体置信度 (平均对数概率)
-                overall_confidence = np.sum(logprob_values) / L
-
-                # 3. 计算方差
-                variance = np.var(logprob_values, ddof=1) # ddof=1 计算样本方差 (L-1)
-    
-            # logger.info(f"Chain Overall Confidence (Avg Log P): {overall_confidence}")
-            # logger.info(f"Chain Log P Variance: {variance}")
-            beam_confidences.append(overall_confidence)
-            beam_variances.append(variance)
-            # 💡 将平均对数概率和方差作为分支的 score
-            # 在这里，我们假设总体评分 = 平均 log P - (权重 * 方差)
-            # 目标：平均 log P 越高 (越接近 0)，方差越低，分数越高。
-            # 我们将这个分数存储在 beam.all_scores 中以保持后续逻辑不变
-            # 假设权重系数 alpha 为 0.1 (需要根据实际应用调整)
-            alpha = 0.3 
-            beam.all_scores = [overall_confidence - alpha * variance]
-
-
-        # Score all active beams
-        logger.info(f"Beam Confidences (Avg Log P): {beam_confidences}")
-        logger.info(f"Beam Log P Variances: {beam_variances}")
-
-        # scores = prm.score(prompts, completions)
-        agg_scores = [[beam.all_scores[0]] for beam in active_beams]
-        # agg_scores = [
-        #     [aggregate_scores(s, config.agg_strategy) for s in score]
-        #     for score in scores
-        # ]
-
-        # for beam, score in zip(active_beams, scores, strict=True):
-        #     beam.all_scores = score[0]
+        for beam, score in zip(active_beams, scores, strict=True):
+            beam.all_scores = score[0]
 
         # Now filter active_beams and agg_scores for beams that are completed
         agg_scores = [
@@ -237,7 +185,7 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
 
         # Get indices for top (config.n / config.beam_width) completions
         top_indices = np.argsort(np.array(agg_scores).flatten())[
-            -(config.n // config.beam_width):
+            -(current_beam_width // config.beam_width):
         ]
 
         for idx, beam in enumerate(active_beams):
@@ -250,7 +198,7 @@ def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -
             completed_beams,
             key=lambda b: aggregate_scores(b.all_scores, config.agg_strategy),
             reverse=True,
-        )[: config.n]
+        )[: current_beam_width]
     else:
         completed_beams = completed_beams[: current_beam_width]
 
