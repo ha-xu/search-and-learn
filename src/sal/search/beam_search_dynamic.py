@@ -30,7 +30,7 @@ logger = logging.getLogger()
 from sal.utils.score import aggregate_scores
 
 
-def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
+def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -71,19 +71,31 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
         else:
             active_beams = [b for b in active_beams if not b.pruned]
 
+        min_beam_width = 2
+        # 计算当前收缩因子 (i / I_max)
+        contraction_factor = i / config.num_iterations
+        
+        # 计算当前要减少的量，并向下取整
+        reduction_amount = (config.n - min_beam_width) * contraction_factor
+        
+        # 最终的当前目标集束宽度 k_i
+        current_beam_width = int(config.n - reduction_amount)
+        current_beam_width = max(min_beam_width, current_beam_width) # 确保不小于最小值
+        
+        logger.debug(f"Iteration {i}: Setting beam width to {current_beam_width}")
         # Duplicate active beams to ensure that we have config.n beams per iteration
-        if len(active_beams) != config.n:
-            repeats = (config.n // len(active_beams)) + 1
+        if len(active_beams) != current_beam_width:
+            repeats = (current_beam_width // len(active_beams)) + 1
             logger.debug(
-                f"Extending active_beams with {repeats} repetitions to reach size {config.n}"
+                f"Extending active_beams with {repeats} repetitions to reach size {current_beam_width}"
             )
             extended_active_beams = [
-                copy.deepcopy(b) for b in (active_beams * repeats)[: config.n]
+                copy.deepcopy(b) for b in (active_beams * repeats)[: current_beam_width]
             ]
             active_beams = extended_active_beams
-            if len(active_beams) != config.n:
+            if len(active_beams) != current_beam_width:
                 raise ValueError(
-                    f"Expected {config.n} active beams, but got {len(active_beams)}"
+                    f"Expected {current_beam_width} active beams, but got {len(active_beams)}"
                 )
 
         if i == config.num_iterations - 1:
@@ -240,27 +252,27 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             reverse=True,
         )[: config.n]
     else:
-        completed_beams = completed_beams[: config.n]
+        completed_beams = completed_beams[: current_beam_width]
 
-    if len(completed_beams) != config.n:
+    if len(completed_beams) != current_beam_width:
         # If we don't have enough completed_beams, duplicate until we reach config.n
-        repeats = (config.n // len(completed_beams)) + 1
+        repeats = (current_beam_width // len(completed_beams)) + 1
         logger.debug(
-            f"Extending completed_beams with {repeats} repetitions to reach size {config.n}"
+            f"Extending completed_beams with {repeats} repetitions to reach size {current_beam_width}"
         )
         extended_completed_beams = [
-            copy.deepcopy(b) for b in (completed_beams * repeats)[: config.n]
+            copy.deepcopy(b) for b in (completed_beams * repeats)[: current_beam_width]
         ]
         completed_beams = extended_completed_beams
 
     return completed_beams
 
 
-def beam_search_prune(examples, config: Config, llm: LLM, prm: PRM):
+def beam_search_dynamic(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
 
     start_time = time.perf_counter()
-    beam_results = _beam_search_prune(problems, config, llm, prm)
+    beam_results = _beam_search_dynamic(problems, config, llm, prm)
     end_time = time.perf_counter()
     total_time = end_time - start_time
     # Group together alike beams and store in the dataset
