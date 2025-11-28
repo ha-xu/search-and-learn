@@ -37,7 +37,7 @@ export APPROACH=beam_search_dynamic
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=500
+export SAMPLES=100
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
@@ -50,7 +50,7 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 # Clear previous results file
 echo > $RESULTCOLLECTIONFILE
 
-for n in 4; do
+for n in 4 16 64; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
