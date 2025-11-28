@@ -138,11 +138,11 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
 
         beam_confidences = []
         beam_variances = []
-        for bean in active_beams:
-            # logger.debug(f"Current beam text: {bean.current_text}")
-            text_len = len(bean.current_text.split())
+        for beam in active_beams:
+            # logger.debug(f"Current beam text: {beam.current_text}")
+            text_len = len(beam.current_text.split())
             # logger.info(f"Current beam text length (in words): {text_len}")
-            token_logprobs = bean.logprobs[0]
+            token_logprobs = beam.logprobs[0]
             # logger.info(f"Current beam text: {token_logprobs}")
             # logger.info(f"Current beam logprobs length: {len(token_logprobs)}")
             # 1. 提取 logprob 值
@@ -178,20 +178,28 @@ def _beam_search_prune(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> 
             # logger.info(f"Chain Log P Variance: {variance}")
             beam_confidences.append(overall_confidence)
             beam_variances.append(variance)
+            # 💡 将平均对数概率和方差作为分支的 score
+            # 在这里，我们假设总体评分 = 平均 log P - (权重 * 方差)
+            # 目标：平均 log P 越高 (越接近 0)，方差越低，分数越高。
+            # 我们将这个分数存储在 beam.all_scores 中以保持后续逻辑不变
+            # 假设权重系数 alpha 为 0.1 (需要根据实际应用调整)
+            alpha = 0.3 
+            beam.all_scores = [overall_confidence - alpha * variance]
+
 
         # Score all active beams
         logger.info(f"Beam Confidences (Avg Log P): {beam_confidences}")
         logger.info(f"Beam Log P Variances: {beam_variances}")
 
-        scores = prm.score(prompts, completions)
+        # scores = prm.score(prompts, completions)
+        agg_scores = [[beam.all_scores[0]] for beam in active_beams]
+        # agg_scores = [
+        #     [aggregate_scores(s, config.agg_strategy) for s in score]
+        #     for score in scores
+        # ]
 
-        agg_scores = [
-            [aggregate_scores(s, config.agg_strategy) for s in score]
-            for score in scores
-        ]
-
-        for beam, score in zip(active_beams, scores, strict=True):
-            beam.all_scores = score[0]
+        # for beam, score in zip(active_beams, scores, strict=True):
+        #     beam.all_scores = score[0]
 
         # Now filter active_beams and agg_scores for beams that are completed
         agg_scores = [
