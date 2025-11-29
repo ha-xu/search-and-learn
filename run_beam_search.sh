@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=04:00:00
 #SBATCH --mem=64G  
-#SBATCH --job-name=myjob
+#SBATCH --job-name=beam_search
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
 #SBATCH --chdir=/home/zx1875/efficientai/search-and-learn 

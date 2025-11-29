@@ -58,7 +58,7 @@ def read_time_from_jsonl(file_path):
                     print(f"错误: 样本 {line_number} 不是有效的 JSON 格式，已跳过。", file=sys.stderr)
                 except Exception as e:
                     print(f"处理样本 {line_number} 时发生未知错误: {e}", file=sys.stderr)
-        print(f"--- 读取完成，共处理 {len(llm_times)} 个样本 ---")
+        # print(f"--- 读取完成，共处理 {len()} 个样本 ---")
         #计算token数平均值
         if len(tokens_counts) > 0:
             avg_tokens = sum(tokens_counts) / len(tokens_counts)
