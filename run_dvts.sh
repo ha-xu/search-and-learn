@@ -1,6 +1,5 @@
 
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
-export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
 
@@ -29,7 +28,7 @@ export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
 export SAMPLES=100
 
-
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
 
 
