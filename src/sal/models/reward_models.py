@@ -149,7 +149,7 @@ class RLHFFlow(PRM):
             "RLHFlow/Llama3.1-8B-PRM-Deepseek-Data",
             device_map="auto",
             torch_dtype=torch.bfloat16,
-            max_memory={i: "13GiB" for i in range(torch.cuda.device_count())},
+            # max_memory={i: "13GiB" for i in range(torch.cuda.device_count())},
             **model_kwargs,
         ).eval()
         tokenizer.padding_side = "right"
