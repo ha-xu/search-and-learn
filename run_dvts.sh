@@ -43,8 +43,8 @@ for n in 4 16 64; do
         --n=$n \
         --num_samples=$SAMPLES \
         --seed=$SEED \
-        --prm_batch_size 1 \
-        --search_batch_size 5 
+        --prm_batch_size=1 \
+        --search_batch_size=5 
     
     echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
