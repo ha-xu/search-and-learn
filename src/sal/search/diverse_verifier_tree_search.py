@@ -186,7 +186,7 @@ def dvts(examples, config: Config, llm: LLM, prm: PRM):
         results["scores"].append([b.best_scores for b in beams])
         # 每个 sample 的总生成 token 数：该样本所有 beam 的 completion_tokens 之和
         results["completion_tokens"].append(
-            int(sum(getattr(b, "completion_tokens", 0) for b in beams))
+            [int(getattr(b, "completion_tokens", 0)) for b in beams]
         )
 
     # TODO: construct and store the tree
