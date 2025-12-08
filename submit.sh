@@ -3,7 +3,7 @@
 #SBATCH --partition=g2-standard-12
 #SBATCH --gres=gpu:1
 #SBATCH --time=04:00:00
-#SBATCH --mem=80G  
+#SBATCH --mem=64G  
 #SBATCH --job-name=search_and_learn
 #SBATCH --output=/scratch/zx1875/slurm_logs/%x-%j.out
 #SBATCH --error=/scratch/zx1875/slurm_logs/%x-%j.err
