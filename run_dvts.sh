@@ -2,17 +2,6 @@
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
-
-# if [ ! -d "$SEARCHANDLEARN" ]; then
-#   echo "ERROR: workdir $SEARCHANDLEARN not found. Exiting."
-#   exit 2
-# fi
-
-# cd $SEARCHANDLEARN
-# # update the code
-# git fetch --all --prune
-# git reset --hard origin/main
-
 # create and activate conda env
 source /home/zx1875/efficientai/miniconda3/etc/profile.d/conda.sh || true
 conda activate sal || { echo "activate conda env failed"; exit 3; }
