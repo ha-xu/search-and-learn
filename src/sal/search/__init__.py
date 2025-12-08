@@ -3,3 +3,4 @@ from .best_of_n import best_of_n
 from .diverse_verifier_tree_search import dvts
 from .beam_search_prune import beam_search_prune
 from .beam_search_dynamic import beam_search_dynamic
+from .diverse_verifier_tree_search_dynamic import dvts_dynamic

@@ -30,7 +30,7 @@ from .utils import Beam, build_conv, generate_k_steps
 logger = logging.getLogger()
 
 
-def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
+def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=2048,
@@ -159,10 +159,12 @@ def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
     return output
 
 
-def dvts(examples, config: Config, llm: LLM, prm: PRM):
+def dvts_dynamic(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
-
-    beam_results = _dvts(problems, config, llm, prm)
+    pre = pre_score_problems(examples, config, llm, prm)
+    logger.debug("Pre-scoring done, starting DVTS...")
+    logger.debug(f"Estimated difficulties: {pre['difficulty_score']}")
+    beam_results = _dvts_dynamic(problems, config, llm, prm)
 
     # group together alike beams and store in the dataset
     grouped_results = defaultdict(list)
@@ -194,3 +196,129 @@ def dvts(examples, config: Config, llm: LLM, prm: PRM):
 
     return results
 
+
+
+def pre_score_problems(
+    examples,
+    config: Config,
+    llm: LLM,
+    prm: PRM,
+    n_candidates: int = 4,
+):
+    """Pre-score problems with PRM before running DVTS/beam search.
+
+    For each problem, generate ``n_candidates`` completions with the base LLM,
+    score them with the PRM, and compute a simple difficulty score.
+
+    Returns a dict with fields:
+        - ``completions``: list[list[str]] per problem
+        - ``scores``: list[list[float]] PRM scalar scores per completion
+        - ``difficulty_score``: list[float], higher means harder (1 - max_score)
+    """
+
+    problems = examples["problem"]
+
+    sampling_params = SamplingParams(
+        temperature=config.temperature,
+        max_tokens=2048,
+        top_p=config.top_p,
+        n=n_candidates,
+        stop=["\n\n"],
+        include_stop_str_in_output=True,
+    )
+
+    tokenizer = llm.get_tokenizer()
+    if config.custom_chat_template is not None:
+        tokenizer.chat_template = config.custom_chat_template
+
+    convs = [
+        build_conv(p, response="", system_prompt=config.system_prompt)
+        for p in problems
+    ]
+    templated_convs = tokenizer.apply_chat_template(
+        convs,
+        add_generation_prompt=True,
+        continue_final_message=False,
+        tokenize=False,
+    )
+
+    llm_outputs = llm.generate(templated_convs, sampling_params, use_tqdm=False)
+
+    # 收集每道题的 n_candidates 个 completion 文本
+    all_completions: list[list[str]] = []
+    for output in llm_outputs:
+        all_completions.append([o.text for o in output.outputs])
+
+    # PRM 打分接口：prompts: list[str], completions: list[list[str]]
+    all_scores = prm.score(problems, all_completions)
+
+    results = {"completions": [], "scores": [], "difficulty_score": []}
+
+    for scores, completions in zip(all_scores, all_completions, strict=True):
+        # scores: list[list[float]]，对每个 completion 是一个打分序列
+        scalar_scores = [
+            aggregate_scores(s, config.agg_strategy) for s in scores
+        ]
+
+        if len(scalar_scores) == 0:
+            diff = 1.0
+        else:
+            max_score = float(max(scalar_scores))
+            # 简单难度指标：1 - max_score，越大表示越难
+            diff = float(1.0 - max_score)
+
+        results["completions"].append(completions)
+        results["scores"].append(scalar_scores)
+        results["difficulty_score"].append(diff)
+
+    return results
+
+
+# def estimate_difficulty(examples, config: Config, llm: LLM, prm: PRM, n_candidates: int | None = None):
+#     """Estimate problem difficulty using PRM scores on multiple LLM candidates.
+
+#     Returns a dict with per-problem completions, scores and a scalar difficulty_score.
+#     """
+
+#     problems = examples["problem"]
+
+#     # 直接复用 dvts 的生成和打分逻辑
+#     beam_results = _dvts(problems, config, llm, prm)
+
+#     grouped_results = defaultdict(list)
+#     for b in beam_results:
+#         grouped_results[b.prompt].append(b)
+
+#     if n_candidates is None:
+#         n_candidates = config.n_beams * config.beam_width
+
+#     out = {"completions": [], "scores": [], "difficulty_score": []}
+
+#     for p in problems:
+#         beams = grouped_results[p]
+
+#         # 展平为 (completion, score_scalar) 列表
+#         cand = []
+#         for b in beams:
+#             score_scalar = aggregate_scores(b.best_scores, config.agg_strategy)
+#             cand.append((b.current_text, score_scalar))
+
+#         # 按 PRM 分数从高到低排序，截取前 n_candidates 个
+#         cand.sort(key=lambda x: x[1], reverse=True)
+#         cand = cand[:n_candidates]
+
+#         completions = [c for c, _ in cand]
+#         scores = [s for _, s in cand]
+
+#         if len(scores) == 0:
+#             diff = 1.0
+#         else:
+#             # 简单难度指标：1 - max_score，值越大表示越难
+#             max_score = float(max(scores))
+#             diff = float(1.0 - max_score)
+
+#         out["completions"].append(completions)
+#         out["scores"].append(scores)
+#         out["difficulty_score"].append(diff)
+
+#     return out
