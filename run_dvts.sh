@@ -37,7 +37,7 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 # Clear previous results file
 echo > $RESULTCOLLECTIONFILE
 
-for n in 4 16 64; do
+for n in 64; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
