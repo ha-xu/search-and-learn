@@ -58,6 +58,7 @@ def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
                     pruned=False,
                     stop_reasons=None,
                     history=[],
+                    completion_tokens=0,
                 )
             )
 
@@ -103,6 +104,7 @@ def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
             beam.next_texts = gen_result.next_texts
             beam.stop_reasons = gen_result.stop_reasons
             beam.lookahead_texts = gen_result.lookahead_texts
+            beam.completion_tokens += gen_result.completion_tokens
             if len(beam.next_texts) != config.beam_width:
                 beam.pruned = True
                 # rarely ~1/1000 the model will generate few beams than expected. #TODO: investigate why
@@ -153,6 +155,7 @@ def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
                     previous_text=beam.current_text,
                     pruned=beam.pruned,
                     history=beam.history,
+                    completion_tokens=beam.completion_tokens,
                 )
             )
 
