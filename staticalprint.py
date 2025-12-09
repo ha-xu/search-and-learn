@@ -47,9 +47,9 @@ def read_time_from_jsonl(file_path):
                         print(f"警告: 样本 {line_number} 中缺少 '{beam_counts_total_key}' 字段。", file=sys.stderr)
 
                     if token_count is not None:
-                        token_counts.append(sum(token_count))
+                        token_counts.append(token_count)
                     if beam_counts_total is not None:
-                        beam_counts_total.append( sum(beam_counts_total) )
+                        beam_counts_total.append(beam_counts_total)
                     # # tokens_count = data.get(tokens_count_key, None)
                     # llm_time = data.get(llm_time_key, None)
                     # prm_time = data.get(prm_time_key, None)
@@ -92,6 +92,7 @@ def read_time_from_jsonl(file_path):
         if len(token_counts) > 0:
             avg_token_count = sum(token_counts) / len(token_counts)
             print(f"平均 Token 数: {avg_token_count:.2f}")
+
         if len(beam_counts_total) > 0:
             avg_beam_counts_total = sum(beam_counts_total) / len(beam_counts_total)
             print(f"平均 Beam 数: {avg_beam_counts_total:.2f}")
