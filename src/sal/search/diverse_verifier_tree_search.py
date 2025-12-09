@@ -28,7 +28,8 @@ from sal.utils.score import aggregate_scores
 from .utils import Beam, build_conv, generate_k_steps
 
 logger = logging.getLogger()
-
+tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
+beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
 
 def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
     sampling_params = SamplingParams(
@@ -105,6 +106,8 @@ def _dvts(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
             beam.stop_reasons = gen_result.stop_reasons
             beam.lookahead_texts = gen_result.lookahead_texts
             beam.completion_tokens += gen_result.completion_tokens
+            tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
+            beam_number_per_prompt[beam.prompt] += 1
             if len(beam.next_texts) != config.beam_width:
                 beam.pruned = True
                 # rarely ~1/1000 the model will generate few beams than expected. #TODO: investigate why
@@ -172,7 +175,7 @@ def dvts(examples, config: Config, llm: LLM, prm: PRM):
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": []}
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [], "beam_counts_total": []}
 
     for p in problems:
         beams = grouped_results[p]
@@ -189,9 +192,13 @@ def dvts(examples, config: Config, llm: LLM, prm: PRM):
         )
         results["scores"].append([b.best_scores for b in beams])
         # 每个 sample 的总生成 token 数：该样本所有 beam 的 completion_tokens 之和
-        results["completion_tokens"].append(
-            [int(getattr(b, "completion_tokens", 0)) for b in beams]
-        )
+        # results["completion_tokens"].append(
+        #     [int(getattr(b, "completion_tokens", 0)) for b in beams]
+        # )
+        results["completion_tokens"].append(int(tokens_per_prompt[p]))
+        results["beam_counts_total"].append(int(beam_number_per_prompt[p]))
+        logger.info(f"Total tokens for problem is {tokens_per_prompt[p]}")
+        logger.info(f"Number of beams for problem is {beam_number_per_prompt[p]}")
 
     # TODO: construct and store the tree
 
