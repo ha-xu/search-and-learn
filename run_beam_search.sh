@@ -28,13 +28,13 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 echo > $RESULTCOLLECTIONFILE
 
 for n in 4 16 64; do
-    cd $SEARCHANDLEARN
-    python scripts/test_time_compute.py $CONFIG \
-        --n=$n \
-        --num_samples=$SAMPLES \
-        --seed=$SEED
+    # cd $SEARCHANDLEARN
+    # python scripts/test_time_compute.py $CONFIG \
+    #     --n=$n \
+    #     --num_samples=$SAMPLES \
+    #     --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+    # echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
     # echo $RESULTDIR/beam_search_completions.jsonl
 
