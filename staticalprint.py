@@ -19,7 +19,7 @@ def read_time_from_jsonl(file_path):
     try:
         # tokens_counts = []
         token_counts = []
-        beam_counts_total = []
+        beam_total_counts = []
         with open(file_path, 'r', encoding='utf-8') as f:
             for line_number, line in enumerate(f, 1):
                 # 忽略空行或只包含空白字符的行
@@ -39,17 +39,17 @@ def read_time_from_jsonl(file_path):
                     beam_counts_total_key = 'beam_counts_total'
                     
                     token_count = data.get(token_count_key, None)
-                    beam_counts_total = data.get(beam_counts_total_key, None)
+                    beam_count_total = data.get(beam_counts_total_key, None)
 
                     if token_count is None:
                         print(f"警告: 样本 {line_number} 中缺少 '{token_count_key}' 字段。", file=sys.stderr)
-                    if beam_counts_total is None:
+                    if beam_count_total is None:
                         print(f"警告: 样本 {line_number} 中缺少 '{beam_counts_total_key}' 字段。", file=sys.stderr)
 
                     if token_count is not None:
                         token_counts.append(token_count)
-                    if beam_counts_total is not None:
-                        beam_counts_total.append(beam_counts_total)
+                    if beam_count_total is not None:
+                        beam_total_counts.append(beam_count_total)
                     # # tokens_count = data.get(tokens_count_key, None)
                     # llm_time = data.get(llm_time_key, None)
                     # prm_time = data.get(prm_time_key, None)
@@ -93,8 +93,8 @@ def read_time_from_jsonl(file_path):
             avg_token_count = sum(token_counts) / len(token_counts)
             print(f"平均 Token 数: {avg_token_count:.2f}")
 
-        if len(beam_counts_total) > 0:
-            avg_beam_counts_total = sum(beam_counts_total) / len(beam_counts_total)
+        if len(beam_total_counts) > 0:
+            avg_beam_counts_total = sum(beam_total_counts) / len(beam_total_counts)
             print(f"平均 Beam 数: {avg_beam_counts_total:.2f}")
     except IOError as e:
         print(f"错误: 无法打开或读取文件: {e}", file=sys.stderr)
