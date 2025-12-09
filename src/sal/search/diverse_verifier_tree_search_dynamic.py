@@ -28,9 +28,12 @@ from sal.utils.score import aggregate_scores
 from .utils import Beam, build_conv, generate_k_steps
 
 logger = logging.getLogger()
+tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
 
 
 def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
+
+
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=2048,
@@ -105,7 +108,7 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
             beam.stop_reasons = gen_result.stop_reasons
             beam.lookahead_texts = gen_result.lookahead_texts
             beam.completion_tokens += gen_result.completion_tokens
-
+            tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
             if len(beam.next_texts) != config.beam_width:
                 beam.pruned = True
                 # rarely ~1/1000 the model will generate few beams than expected. #TODO: investigate why
@@ -195,6 +198,8 @@ def dvts_dynamic(examples, config: Config, llm: LLM, prm: PRM):
         results["completion_tokens"].append(
             [int(getattr(b, "completion_tokens", 0)) for b in beams]
         )
+        logger.info(f"Total tokens for problem: {p} is {tokens_per_prompt[p]}")
+        # results["completion_tokens"].append(int(tokens_per_prompt[p]))
 
     # TODO: construct and store the tree
 
