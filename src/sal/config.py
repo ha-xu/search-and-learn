@@ -69,7 +69,7 @@ class Config:
     sort_completed: bool = False
 
     def __post_init__(self):
-        if self.approach == "dvts":
+        if self.approach == "dvts" or self.approach == "dvts_dynamic":
             if self.n % self.beam_width != 0:
                 raise ValueError("n should be a multiple of beam_width")
             self.n_beams = self.n // self.beam_width
