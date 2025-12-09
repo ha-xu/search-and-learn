@@ -28,7 +28,8 @@ from .utils import Beam, build_conv, generate_k_steps, last
 
 logger = logging.getLogger()
 from sal.utils.score import aggregate_scores
-
+tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
+beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
 
 def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
     sampling_params = SamplingParams(
@@ -122,6 +123,8 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
             beam.completion_tokens += gen_result.completion_tokens
             beam.current_text += beam.next_texts[0]
             beam.history.append(beam.next_texts[0])
+            tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
+            beam_number_per_prompt[beam.prompt] += 1
 
             if (
                 beam.stop_reasons[0] == "EOS"
@@ -210,7 +213,7 @@ def beam_search(examples, config: Config, llm: LLM, prm: PRM):
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": []}
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": [], "beam_counts_total": []}
     num_problems = len(problems)
     time_per_problem = total_time / num_problems
     for p in problems:
@@ -223,8 +226,11 @@ def beam_search(examples, config: Config, llm: LLM, prm: PRM):
         results["completions"].append(completions)
         results["scores"].append([b.all_scores for b in beams])
         results["pred"].append(pred)
-        results["completion_tokens"].append([b.completion_tokens for b in beams])
-
+        # results["completion_tokens"].append([b.completion_tokens for b in beams])
+        results["completion_tokens"].append(int(tokens_per_prompt[p]))
+        logger.info(f"Total tokens for problem is {tokens_per_prompt[p]}")
+        logger.info(f"Number of beams for problem is {beam_number_per_prompt[p]}")
+        results["beam_counts_total"].append(int(beam_number_per_prompt[p]))
         # Add average time per problem
         results["total_time_beam_search"].append(time_per_problem)
 
