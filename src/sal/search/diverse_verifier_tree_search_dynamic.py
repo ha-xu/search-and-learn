@@ -162,8 +162,8 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
 def dvts_dynamic(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
     pre = pre_score_problems(examples, config, llm, prm)
-    logger.debug("Pre-scoring done, starting DVTS...")
-    logger.debug(f"Estimated difficulties: {pre['difficulty_score']}")
+    logger.info("Pre-scoring done, starting DVTS...")
+    logger.info(f"Estimated difficulties: {pre['difficulty_score']}")
     beam_results = _dvts_dynamic(problems, config, llm, prm)
 
     # group together alike beams and store in the dataset
