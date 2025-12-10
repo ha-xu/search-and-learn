@@ -71,6 +71,11 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
         if len(gen_beams) == 0:
             break
 
+        # 当前层使用的 beam 宽度：随深度从 config.beam_width 逐渐减小到 1
+        max_depth = max(config.num_iterations - 1, 1)
+        decay_ratio = 1.0 - i / max_depth
+        curr_beam_width = max(1, int(round(1 + (config.beam_width - 1) * decay_ratio)))
+
         if i == config.num_iterations - 1:
             # last iteration, generate to EOS
             sampling_params = SamplingParams(
@@ -99,7 +104,7 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
         )
         lookahead = 0 if i == config.num_iterations - 1 else config.lookahead
         gen_results = generate_k_steps(
-            templated_convs, lookahead, llm, sampling_params, config.beam_width
+            templated_convs, lookahead, llm, sampling_params, curr_beam_width
         )
 
         prompts, completions = [], []
@@ -110,11 +115,11 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
             beam.completion_tokens += gen_result.completion_tokens
             tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
             beam_number_per_prompt[beam.prompt] += 1
-            if len(beam.next_texts) != config.beam_width:
+            if len(beam.next_texts) != curr_beam_width:
                 beam.pruned = True
                 # rarely ~1/1000 the model will generate few beams than expected. #TODO: investigate why
                 logger.warning(
-                    f"beam {beam.index} has {len(beam.next_texts)} completions"
+                    f"beam {beam.index} has {len(beam.next_texts)} completions (expected {curr_beam_width})"
                 )
             prompts.append(beam.prompt)
             completions.append([beam.current_text + t for t in beam.lookahead_texts])
@@ -142,29 +147,13 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
         for beam in gen_beams:
             if "boxed{" in beam.current_text:
                 beam.pruned = True
-
-    # we need to copy the results from the last iteration in to beam_width beams as otherwise we would only have n/m results
-    output: list[Beam] = []
-    for beam in beams:
-        for i in range(config.beam_width):
-            output.append(
-                Beam(
-                    prompt=beam.prompt,
-                    index=beam.index,
-                    current_text=beam.previous_text + beam.next_texts[i],
-                    next_texts=None,
-                    lookahead_texts=None,
-                    stop_reasons=None,
-                    best_scores=beam.all_scores[i],
-                    all_scores=beam.all_scores,
-                    previous_text=beam.current_text,
-                    pruned=beam.pruned,
-                    history=beam.history,
-                    completion_tokens=beam.completion_tokens,
-                )
-            )
-
-    return output
+        # 统计当前未被 prune 的 beams 数量
+        num_active_beams = sum(1 for b in beams if not b.pruned)
+        logger.info(
+            f"After iteration {i+1}, active beams: {num_active_beams}/{len(beams)}"
+        )
+    # 直接返回最后一轮的 beams；每个 beam 代表一条完整路径
+    return beams
 
 
 def dvts_dynamic(examples, config: Config, llm: LLM, prm: PRM):
