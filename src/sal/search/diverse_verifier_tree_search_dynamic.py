@@ -147,6 +147,27 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
         for beam in gen_beams:
             if "boxed{" in beam.current_text:
                 beam.pruned = True
+
+        # # 每一层结束后，对每个 prompt 的 active beams 进行筛选，只保留 target_n_beams 个
+        # # 这样可以实现“从 n 降到 1”的效果，同时保证至少保留 1 个（如果还有活着的）
+        # target_n_beams = max(1, int(round(1 + (config.n_beams - 1) * decay_ratio)))
+        
+        # active_beams_by_prompt = defaultdict(list)
+        # for beam in gen_beams:
+        #     if not beam.pruned:
+        #         active_beams_by_prompt[beam.prompt].append(beam)
+        
+        # for prompt, p_beams in active_beams_by_prompt.items():
+        #     if len(p_beams) > target_n_beams:
+        #         # 按分数排序，保留前 target_n_beams 个
+        #         p_beams.sort(
+        #             key=lambda b: aggregate_scores(b.best_scores, config.agg_strategy),
+        #             reverse=True
+        #         )
+        #         # 剪掉多余的，但至少保留 target_n_beams 个（这里逻辑自然满足）
+        #         for b in p_beams[target_n_beams:]:
+        #             b.pruned = True
+
         # 统计当前未被 prune 的 beams 数量
         num_active_beams = sum(1 for b in beams if not b.pruned)
         logger.info(
