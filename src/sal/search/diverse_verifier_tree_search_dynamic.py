@@ -103,6 +103,8 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
             tokenize=False,
         )
         lookahead = 0 if i == config.num_iterations - 1 else config.lookahead
+
+        logger.info(f"Iteration {i+1}: using beam width {curr_beam_width}")
         gen_results = generate_k_steps(
             templated_convs, lookahead, llm, sampling_params, curr_beam_width
         )
@@ -128,9 +130,12 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
 
         all_scores = prm.score(prompts, completions)
 
+        current_step_scores = []
         for beam, scores in zip(gen_beams, all_scores, strict=True):
             agg_scores = [aggregate_scores(s, config.agg_strategy) for s in scores]
             best_score_ind = np.argmax(agg_scores)
+            current_step_scores.append(agg_scores[best_score_ind])
+            
             beam.all_scores = scores
             beam.previous_text = beam.current_text
             beam.current_text = beam.current_text + beam.next_texts[best_score_ind]
@@ -142,6 +147,11 @@ def _dvts_dynamic(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PR
             ):
                 # stopped on EOS, prune
                 beam.pruned = True
+
+        if current_step_scores:
+            mean_score = np.mean(current_step_scores)
+            std_score = np.std(current_step_scores)
+            logger.info(f"Iteration {i+1}: Mean Score = {mean_score:.4f}, Std Dev = {std_score:.4f}")
 
         # filter / prune
         for beam in gen_beams:
