@@ -25,30 +25,30 @@ export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_s
 echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
 
 # Clear previous results file
-echo > $RESULTCOLLECTIONFILE
+# echo > $RESULTCOLLECTIONFILE
 
-for n in 4 16 64; do
+for n in 4 16 ; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=$SAMPLES \
         --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+    # echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
     # echo $RESULTDIR/beam_search_completions.jsonl
 
     # Evaluation of the accuracy
-    cd $EVALDIR
-    conda create -n qwen-math python=3.11 && conda activate qwen-math
-    cd latex2sympy
-    pip install -e .
-    cd ..
-    pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
-    conda deactivate
-    # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    # cd $EVALDIR
+    # conda create -n qwen-math python=3.11 && conda activate qwen-math
+    # cd latex2sympy
+    # pip install -e .
+    # cd ..
+    # pip install -r requirements.txt 
+    # python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    # conda deactivate
+    # # print time
+    # python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 

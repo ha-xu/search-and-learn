@@ -31,7 +31,7 @@ from sal.utils.score import aggregate_scores
 tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
 beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
 
-def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
+def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> tuple[list[Beam], list[list[float]]]:
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -63,6 +63,7 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
             )
 
     completed_beams: list[Beam] = []
+    all_level_scores: list[list[float]] = []  # Store scores for each level
 
     for i in tqdm(range(config.num_iterations), desc="Beam search iterations"):
         if i == 0:
@@ -143,6 +144,16 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
             for score in scores
         ]
 
+        # Flatten and store scores
+        flat_scores = [s for sublist in agg_scores for s in sublist]
+        all_level_scores.append(flat_scores)
+
+        # Log stats
+        if flat_scores:
+            mean_score = np.mean(flat_scores)
+            std_score = np.std(flat_scores)
+            logger.info(f"Iteration {i}: Mean Score = {mean_score}, Std Dev = {std_score}")
+
         for beam, score in zip(active_beams, scores, strict=True):
             beam.all_scores = score[0]
 
@@ -198,14 +209,14 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[B
         ]
         completed_beams = extended_completed_beams
 
-    return completed_beams
+    return completed_beams, all_level_scores
 
 
 def beam_search(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
 
     start_time = time.perf_counter()
-    beam_results = _beam_search(problems, config, llm, prm)
+    beam_results, all_level_scores = _beam_search(problems, config, llm, prm)
     end_time = time.perf_counter()
     total_time = end_time - start_time
     # Group together alike beams and store in the dataset
@@ -213,7 +224,7 @@ def beam_search(examples, config: Config, llm: LLM, prm: PRM):
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": [], "beam_counts_total": []}
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": [], "beam_counts_total": [], "all_level_scores": all_level_scores}
     num_problems = len(problems)
     time_per_problem = total_time / num_problems
     for p in problems:
