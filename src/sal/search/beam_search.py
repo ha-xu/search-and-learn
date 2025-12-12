@@ -224,8 +224,16 @@ def beam_search(examples, config: Config, llm: LLM, prm: PRM):
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": [], "beam_counts_total": [], "all_level_scores": all_level_scores}
     num_problems = len(problems)
+    results = {
+        "completions": [],
+        "pred": [],
+        "completion_tokens": [],
+        "scores": [],
+        "total_time_beam_search": [],
+        "beam_counts_total": [],
+        "all_level_scores": [all_level_scores] * num_problems,
+    }
     time_per_problem = total_time / num_problems
     for p in problems:
         beams = grouped_results[p]
