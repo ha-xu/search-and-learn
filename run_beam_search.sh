@@ -16,7 +16,7 @@ export APPROACH=beam_search
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=50
+export SAMPLES=10
 
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 
