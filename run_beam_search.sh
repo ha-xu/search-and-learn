@@ -32,7 +32,9 @@ for n in 16 ; do
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=$SAMPLES \
-        --seed=$SEED
+        --seed=$SEED \
+        --prm_batch_size=2 \
+
     
     # echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
