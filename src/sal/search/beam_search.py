@@ -137,7 +137,7 @@ def _beam_search(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> tuple[
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
-        scores = prm.score(prompts, completions)
+        scores = prm.score(prompts, completions, batch_size=2)
 
         agg_scores = [
             [aggregate_scores(s, config.agg_strategy) for s in score]
