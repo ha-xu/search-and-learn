@@ -6,8 +6,9 @@ import numpy as np
 
 def process_scores(jsonl_file, output_file):
     """
-    Reads all_level_scores from a .jsonl file, calculates mean and std per level,
-    and saves the results to a JSON file.
+    Reads all_level_scores from a .jsonl file.
+    Calculates mean and std for EACH sample first, then averages them.
+    This isolates intra-sample variance from inter-sample variance.
     """
     if not os.path.exists(jsonl_file):
         print(f"Error: File not found: {jsonl_file}", file=sys.stderr)
@@ -15,8 +16,9 @@ def process_scores(jsonl_file, output_file):
 
     print(f"--- Reading file: {jsonl_file} ---")
     
-    # Dictionary to store all scores for each level. Key: level index, Value: list of all scores
-    level_scores_map = {} 
+    # Dictionary to store lists of means and stds for each level
+    # Key: level index, Value: {'means': [], 'stds': []}
+    level_stats_map = {} 
 
     try:
         with open(jsonl_file, 'r', encoding='utf-8') as f:
@@ -33,42 +35,57 @@ def process_scores(jsonl_file, output_file):
                         continue
                     
                     for level_idx, scores in enumerate(all_level_scores):
-                        if level_idx not in level_scores_map:
-                            level_scores_map[level_idx] = []
-                        # scores is a list of floats for that level
-                        level_scores_map[level_idx].extend(scores)
+                        if not scores:
+                            continue
+
+                        if level_idx not in level_stats_map:
+                            level_stats_map[level_idx] = {'means': [], 'stds': []}
+                        
+                        # Calculate stats for this specific sample at this level
+                        # This captures the spread of beams for THIS problem only
+                        sample_mean = np.mean(scores)
+                        sample_std = np.std(scores)
+                        
+                        level_stats_map[level_idx]['means'].append(sample_mean)
+                        level_stats_map[level_idx]['stds'].append(sample_std)
                         
                 except json.JSONDecodeError:
                     print(f"Error: Invalid JSON at line {line_number}", file=sys.stderr)
                 except Exception as e:
                     print(f"Error processing line {line_number}: {e}", file=sys.stderr)
 
-        # Calculate mean and std
-        sorted_levels = sorted(level_scores_map.keys())
+        # Calculate average of means and average of stds
+        sorted_levels = sorted(level_stats_map.keys())
         
-        means = []
-        stds = []
+        final_means = []
+        final_stds = []
         levels = []
 
-        print("\n--- Statistics per Level ---")
+        print("\n--- Statistics per Level (Averaged Intra-Sample Stats) ---")
         for level in sorted_levels:
-            scores = level_scores_map[level]
-            if scores:
-                mean_val = np.mean(scores)
-                std_val = np.std(scores)
-                means.append(float(mean_val))
-                stds.append(float(std_val))
+            sample_means = level_stats_map[level]['means']
+            sample_stds = level_stats_map[level]['stds']
+            
+            if sample_means:
+                # The average of per-sample means
+                avg_mean_val = np.mean(sample_means)
+                # The average of per-sample stds (Average Intra-Sample Std)
+                # This tells us: "On average, how much do beams diverge within a single problem?"
+                avg_std_val = np.mean(sample_stds)
+                
+                final_means.append(float(avg_mean_val))
+                final_stds.append(float(avg_std_val))
                 levels.append(level)
-                print(f"Level {level}: Mean = {mean_val:.4f}, Std = {std_val:.4f}, Count = {len(scores)}")
+                print(f"Level {level}: Mean = {avg_mean_val:.4f}, Avg Intra-Sample Std = {avg_std_val:.4f}, Count = {len(sample_means)}")
             else:
-                means.append(0.0)
-                stds.append(0.0)
+                final_means.append(0.0)
+                final_stds.append(0.0)
                 levels.append(level)
 
         output_data = {
             "levels": levels,
-            "means": means,
-            "stds": stds
+            "means": final_means,
+            "stds": final_stds
         }
 
         with open(output_file, 'w', encoding='utf-8') as f:
