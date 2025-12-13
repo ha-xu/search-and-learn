@@ -74,7 +74,7 @@ class Config:
                 raise ValueError("n should be a multiple of beam_width")
             self.n_beams = self.n // self.beam_width
 
-        if self.approach == "beam_search" or self.approach == "beam_search_prune" or self.approach == "beam_search_dynamic":
+        if self.approach == "beam_search" or self.approach == "beam_search_prune" or self.approach == "beam_search_dynamic" or self.approach == "beam_search_dynamic_plus":
             # TODO: implemented a batched version
             if self.search_batch_size != 1:
                 raise ValueError("search_batch_size should be 1 for beam_search")
@@ -96,6 +96,8 @@ class Config:
             elif self.approach == "beam_search_prune":
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
             elif self.approach == "beam_search_dynamic":
+                self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
+            elif self.approach == "beam_search_dynamic_plus":
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
             else:
                 raise ValueError(f"Unknown approach {self.approach}")
