@@ -293,10 +293,7 @@ def beam_search_dynamic_official(examples, config: Config, llm: LLM, prm: PRM):
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    completions = []
-    pred = []
-    completion_tokens = []  # 最终activate beam各自的token数
-    scores = []
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [], "total_time_beam_search": [], "beam_counts_total": []}
     num_problems = len(problems)
     time_per_problem = total_time / num_problems
     
@@ -315,27 +312,20 @@ def beam_search_dynamic_official(examples, config: Config, llm: LLM, prm: PRM):
             aggregate_scores(b.all_scores, config.agg_strategy) for b in beams
         ]
         pred_i = completions_i[np.argmax(agg_scores)]
-        completions.append(completions_i)
-        scores.append([b.all_scores for b in beams])
-        pred.append(pred_i)
-        # 最终activate beam各自的token数
-        completion_tokens.append([b.completion_tokens for b in beams])
+        
+        results["completions"].append(completions_i)
+        results["scores"].append([b.all_scores for b in beams])
+        results["pred"].append(pred_i)
+        results["completion_tokens"].append(int(tokens_per_prompt[p]))
+        results["beam_counts_total"].append(int(beam_number_per_prompt[p]))
+        results["total_time_beam_search"].append(time_per_problem)
+
         logger.info(f"此问题的总token数 {tokens_per_prompt[p]}")
         logger.info(f"此问题的beam数 {beam_number_per_prompt[p]}")
 
-    # 修改 examples 字典
-    examples["completions"] = completions
-    examples["scores"] = scores
-    examples["pred"] = pred
-    examples["completion_tokens"] = completion_tokens  # 最终activate beam各自的token数
-    examples["total_time_beam_search"] = [time_per_problem] * num_problems
-    examples["llm_gen_time"] = [llm_gen_time / num_problems] * num_problems
-    examples["prm_score_time"] = [prm_score_time / num_problems] * num_problems
-    
-    # Token统计信息
-    examples["total_generated_tokens"] = [total_tokens_all_beams] * num_problems  # 总生成token数
-    examples["total_active_beam_tokens"] = [total_active_beam_tokens] * num_problems  # 最终activate beam总token数
-    examples["total_pruned_tokens"] = [total_pruned_tokens] * num_problems  # 被prune的beam总token数
+    # 添加额外的计时信息到 results (可选，为了保持信息完整)
+    results["llm_gen_time"] = [llm_gen_time / num_problems] * num_problems
+    results["prm_score_time"] = [prm_score_time / num_problems] * num_problems
     
     # 打印统计信息
     logger.info(f"\n=== Official Dynamic Beam Search Statistics ===")
@@ -349,16 +339,16 @@ def beam_search_dynamic_official(examples, config: Config, llm: LLM, prm: PRM):
     logger.info(f"平均每个问题PRM时间: {prm_score_time / num_problems:.2f}s")
     logger.info(f"=============================================\n")
 
-    logger.info(f"=================以下是新添加的方法=================\n")
+    # logger.info(f"=================以下是新添加的方法=================\n")
 
-    total_tokens = sum(tokens_per_prompt[p] for p in problems)
-    total_beams = sum(beam_number_per_prompt[p] for p in problems)
-    avg_tokens = total_tokens / num_problems if num_problems > 0 else 0
-    avg_beams = total_beams / num_problems if num_problems > 0 else 0
+    # total_tokens = sum(tokens_per_prompt[p] for p in problems)
+    # total_beams = sum(beam_number_per_prompt[p] for p in problems)
+    # avg_tokens = total_tokens / num_problems if num_problems > 0 else 0
+    # avg_beams = total_beams / num_problems if num_problems > 0 else 0
     
-    logger.info(f"总生成token数: {total_tokens}")
-    logger.info(f"平均每个问题的token数: {avg_tokens:.2f}")
-    logger.info(f"总beam数: {total_beams}")
-    logger.info(f"平均每个问题的beam数: {avg_beams:.2f}")
+    # logger.info(f"总生成token数: {total_tokens}")
+    # logger.info(f"平均每个问题的token数: {avg_tokens:.2f}")
+    # logger.info(f"总beam数: {total_beams}")
+    # logger.info(f"平均每个问题的beam数: {avg_beams:.2f}")
 
-    return examples
+    return results
