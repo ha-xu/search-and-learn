@@ -27,27 +27,52 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 echo > $RESULTCOLLECTIONFILE
 
 for n in 4; do
-    cd $SEARCHANDLEARN
-    python scripts/test_time_compute.py $CONFIG \
-        --n=$n \
-        --num_samples=$SAMPLES \
-        --seed=$SEED
+    for beam_decay_temp in 0.7 0.8 0.9 1.0; do
+        cd $SEARCHANDLEARN
+        python scripts/test_time_compute.py $CONFIG \
+            --n=$n \
+            --num_samples=$SAMPLES \
+            --seed=$SEED \
+            --beam_decay_temperature=$beam_decay_temp
+        
+        echo "Evaluation results for CONFIG=$CONFIG, n=$n, beam_decay_temperature=$beam_decay_temp, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+
+        # echo $RESULTDIR/beam_search_completions.jsonl
+
+        # Evaluation of the accuracy
+        cd $EVALDIR
+        conda create -n qwen-math python=3.11 && conda activate qwen-math
+        cd latex2sympy
+        pip install -e .
+        cd ..
+        pip install -r requirements.txt 
+        python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}_beam_decay_temperature_${beam_decay_temp}.jsonl >> $RESULTCOLLECTIONFILE
+        conda deactivate
+        # print time
+        python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}_beam_decay_temperature_${beam_decay_temp}.jsonl >> $RESULTCOLLECTIONFILE
+
+    done
+    # cd $SEARCHANDLEARN
+    # python scripts/test_time_compute.py $CONFIG \
+    #     --n=$n \
+    #     --num_samples=$SAMPLES \
+    #     --seed=$SEED
     
-    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+    # echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
-    # echo $RESULTDIR/beam_search_completions.jsonl
+    # # echo $RESULTDIR/beam_search_completions.jsonl
 
-    # Evaluation of the accuracy
-    cd $EVALDIR
-    conda create -n qwen-math python=3.11 && conda activate qwen-math
-    cd latex2sympy
-    pip install -e .
-    cd ..
-    pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
-    conda deactivate
-    # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    # # Evaluation of the accuracy
+    # cd $EVALDIR
+    # conda create -n qwen-math python=3.11 && conda activate qwen-math
+    # cd latex2sympy
+    # pip install -e .
+    # cd ..
+    # pip install -r requirements.txt 
+    # python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    # conda deactivate
+    # # print time
+    # python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 

@@ -20,6 +20,9 @@ def read_time_from_jsonl(file_path):
         # tokens_counts = []
         token_counts = []
         beam_total_counts = []
+        total_time_beam_searches = []
+        llm_gen_times = []
+        prm_score_times = []
         with open(file_path, 'r', encoding='utf-8') as f:
             for line_number, line in enumerate(f, 1):
                 # 忽略空行或只包含空白字符的行
@@ -37,9 +40,15 @@ def read_time_from_jsonl(file_path):
 
                     token_count_key = 'completion_tokens'
                     beam_counts_total_key = 'beam_counts_total'
+                    total_time_beam_search_key = 'total_time_beam_search'
+                    llm_gen_time_key = 'llm_gen_time'
+                    prm_score_time_key = 'prm_score_time'
                     
                     token_count = data.get(token_count_key, None)
                     beam_count_total = data.get(beam_counts_total_key, None)
+                    total_time_beam_search = data.get(total_time_beam_search_key, None)
+                    llm_gen_time = data.get(llm_gen_time_key, None)
+                    prm_score_time = data.get(prm_score_time_key, None)
 
                     if token_count is None:
                         print(f"警告: 样本 {line_number} 中缺少 '{token_count_key}' 字段。", file=sys.stderr)
@@ -50,6 +59,13 @@ def read_time_from_jsonl(file_path):
                         token_counts.append(token_count)
                     if beam_count_total is not None:
                         beam_total_counts.append(beam_count_total)
+                    if total_time_beam_search is not None:
+                        total_time_beam_searches.append(total_time_beam_search)
+                    if llm_gen_time is not None:
+                        llm_gen_times.append(llm_gen_time)
+                    if prm_score_time is not None:
+                        prm_score_times.append(prm_score_time)
+                    
                     # # tokens_count = data.get(tokens_count_key, None)
                     # llm_time = data.get(llm_time_key, None)
                     # prm_time = data.get(prm_time_key, None)
@@ -96,6 +112,18 @@ def read_time_from_jsonl(file_path):
         if len(beam_total_counts) > 0:
             avg_beam_counts_total = sum(beam_total_counts) / len(beam_total_counts)
             print(f"平均 Beam 数: {avg_beam_counts_total:.2f}")
+        
+        if len(total_time_beam_searches) > 0:
+            avg_total_time = sum(total_time_beam_searches) / len(total_time_beam_searches)
+            print(f"平均 Beam Search 总时间: {avg_total_time:.6f} 秒")
+            
+        if len(llm_gen_times) > 0:
+            avg_llm_time = sum(llm_gen_times) / len(llm_gen_times)
+            print(f"平均 LLM 生成时间: {avg_llm_time:.6f} 秒")
+            
+        if len(prm_score_times) > 0:
+            avg_prm_time = sum(prm_score_times) / len(prm_score_times)
+            print(f"平均 PRM 评分时间: {avg_prm_time:.6f} 秒")
     except IOError as e:
         print(f"错误: 无法打开或读取文件: {e}", file=sys.stderr)
 

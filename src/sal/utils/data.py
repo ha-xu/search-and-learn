@@ -75,5 +75,5 @@ def save_dataset(dataset, config):
             f"{config.output_dir}/{config.approach}_completions_{config.n}.jsonl", lines=True
         )
         logger.info(
-            f"Saved completions to {config.output_dir}/{config.approach}_completions_{config.n}.jsonl"
+            f"Saved completions to {config.output_dir}/{config.approach}_completions_{config.n}_beam_decay_temperature_{config.beam_decay_temperature}.jsonl"
         )
