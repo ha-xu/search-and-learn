@@ -31,7 +31,51 @@ from sal.utils.score import aggregate_scores
 tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
 beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
 
-def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
+
+def exp_decay_beam_width(iteration: int, config: Config, min_beam_width: int) -> int:
+    """
+    指数/幂函数衰减策略
+    - temperature = 1.0 -> 线性衰减
+    - temperature < 1.0 -> 凸函数 (前期衰减慢)
+    - temperature > 1.0 -> 凹函数 (前期衰减快)
+    """
+    warmup_steps = getattr(config, 'beam_warmup_steps', 10)
+    temperature = getattr(config, 'beam_decay_temperature', 1.0)
+    
+    if iteration < warmup_steps:
+        return config.n
+    
+    progress = (iteration - warmup_steps) / (config.num_iterations - warmup_steps)
+    decay_factor = progress ** (1 / temperature)
+    reduction_amount = (config.n - min_beam_width) * decay_factor
+    width = config.n - reduction_amount
+    return max(min_beam_width, int(width))
+
+
+def cosine_decay_beam_width(iteration: int, config: Config, min_beam_width: int) -> int:
+    """
+    余弦衰减策略
+    公式: η_t = η_min + 1/2 * (η_max - η_min) * (1 + cos(T_cur / T_total * π))
+    """
+    warmup_steps = getattr(config, 'beam_warmup_steps', 10)
+    
+    if iteration < warmup_steps:
+        return config.n
+    
+    eta_max = config.n
+    eta_min = min_beam_width
+    t_total = config.num_iterations - warmup_steps
+    t_cur = iteration - warmup_steps
+    
+    if t_total <= 0:
+        return min_beam_width
+    
+    cosine_factor = 1 + np.cos((t_cur / t_total) * np.pi)
+    width = eta_min + 0.5 * (eta_max - eta_min) * cosine_factor
+    return max(eta_min, int(width))
+
+
+def _beam_search_dynamic(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> tuple[list[Beam], list[Beam], dict]:
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -41,6 +85,10 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
         n=1,
         logprobs=1,
     )
+    
+    # 初始化计时器
+    total_llm_time = 0.0
+    total_prm_time = 0.0
 
     beams: list[Beam] = []
     for prompt in batch_of_prompts:
@@ -59,12 +107,12 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
                     best_scores=[],
                     all_scores=[],
                     previous_text=None,
-                    completion_tokens=0,
-                    logprobs=[]
+                    completion_tokens=0
                 )
             )
 
     completed_beams: list[Beam] = []
+    all_beams = copy.deepcopy(beams)  # 保存所有beams的副本用于统计
 
     for i in tqdm(range(config.num_iterations), desc="Beam search iterations"):
         if i == 0:
@@ -73,19 +121,14 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             active_beams = [b for b in active_beams if not b.pruned]
 
         min_beam_width = 2
-        # 计算当前收缩因子 (i / I_max)
-        contraction_factor = i / config.num_iterations
         
-        # 计算当前要减少的量，并向下取整
-
-        if i < 10 or i == config.num_iterations - 1:
-            reduction_amount = 0
+        # 根据配置选择衰减策略
+        strategy = getattr(config, 'beam_decay_strategy', 'exp')
+        
+        if strategy == "cosine":
+            current_beam_width = cosine_decay_beam_width(i, config, min_beam_width)
         else:
-            reduction_amount = (config.n - min_beam_width) * contraction_factor
-
-        # 最终的当前目标集束宽度 k_i
-        current_beam_width = int(config.n - reduction_amount)
-        current_beam_width = max(min_beam_width, current_beam_width) # 确保不小于最小值
+            current_beam_width = exp_decay_beam_width(i, config, min_beam_width)
         
         logger.info(f"Iteration {i}: Setting beam width to {current_beam_width}")
         # Duplicate active beams to ensure that we have config.n beams per iteration
@@ -129,9 +172,14 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             tokenize=False,
         )
         lookahead = 0 if i == config.num_iterations - 1 else config.lookahead
+        
+        # 计时 LLM 生成
+        t_llm_start = time.time()
         gen_results = generate_k_steps(
             templated_convs, lookahead, llm, sampling_params, 1
         )
+        t_llm_end = time.time()
+        total_llm_time += (t_llm_end - t_llm_start)
 
         prompts, completions = [], []
         for beam, gen_result in zip(active_beams, gen_results, strict=True):
@@ -143,7 +191,7 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             beam.history.append(beam.next_texts[0])
             tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
             beam_number_per_prompt[beam.prompt] += 1
-
+            
             if (
                 beam.stop_reasons[0] == "EOS"
                 or beam.stop_reasons[0] == "length"
@@ -154,7 +202,11 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
+        # 计时 PRM 评分
+        t_prm_start = time.time()
         scores = prm.score(prompts, completions)
+        t_prm_end = time.time()
+        total_prm_time += (t_prm_end - t_prm_start)
 
         agg_scores = [
             [aggregate_scores(s, config.agg_strategy) for s in score]
@@ -216,50 +268,97 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
         ]
         completed_beams = extended_completed_beams
 
-    return completed_beams
+    timing_info = {
+        'llm_time': total_llm_time,
+        'prm_time': total_prm_time
+    }
+    # 返回完成的beams和所有beams（包括被prune的）
+    return completed_beams, all_beams, timing_info
 
 
-def beam_search_dynamic_plus(examples, config: Config, llm: LLM, prm: PRM):
+def beam_search_dynamic_official(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
 
     start_time = time.perf_counter()
-    beam_results = _beam_search_dynamic_plus(problems, config, llm, prm)
+    beam_results, all_beams, timing_info = _beam_search_dynamic(problems, config, llm, prm)
     end_time = time.perf_counter()
     total_time = end_time - start_time
+    
+    # 提取计时信息
+    llm_gen_time = timing_info['llm_time']
+    prm_score_time = timing_info['prm_time']
+    
     # Group together alike beams and store in the dataset
     grouped_results = defaultdict(list)
     for results in beam_results:
         grouped_results[results.prompt].append(results)
 
-    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [],"total_time_beam_search": [] ,"beam_counts_total": []}
+    completions = []
+    pred = []
+    completion_tokens = []  # 最终activate beam各自的token数
+    scores = []
     num_problems = len(problems)
     time_per_problem = total_time / num_problems
+    
+    # Token统计
+    # 1. 最终activate beam的总token数（这些是最终返回的beams）
+    total_active_beam_tokens = sum(b.completion_tokens for b in beam_results)
+    # 2. 被prune的beam总token数 - 从all_beams中统计被prune的
+    total_pruned_tokens = sum(b.completion_tokens for b in all_beams if b.pruned)
+    # 3. 总生成token数 = activate beams + pruned beams
+    total_tokens_all_beams = total_active_beam_tokens + total_pruned_tokens
+    
     for p in problems:
         beams = grouped_results[p]
-        completions = [b.current_text for b in beams]
+        completions_i = [b.current_text for b in beams]
         agg_scores = [
             aggregate_scores(b.all_scores, config.agg_strategy) for b in beams
         ]
-        pred = completions[np.argmax(agg_scores)]
-        results["completions"].append(completions)
-        results["scores"].append([b.all_scores for b in beams])
-        results["pred"].append(pred)
-        results["completion_tokens"].append(int(tokens_per_prompt[p]))
-        results["beam_counts_total"].append(int(beam_number_per_prompt[p]))
-        logger.info(f"Total tokens for problem is {tokens_per_prompt[p]}")
-        logger.info(f"Number of beams for problem is {beam_number_per_prompt[p]}")
+        pred_i = completions_i[np.argmax(agg_scores)]
+        completions.append(completions_i)
+        scores.append([b.all_scores for b in beams])
+        pred.append(pred_i)
+        # 最终activate beam各自的token数
+        completion_tokens.append([b.completion_tokens for b in beams])
+        logger.info(f"此问题的总token数 {tokens_per_prompt[p]}")
+        logger.info(f"此问题的beam数 {beam_number_per_prompt[p]}")
 
-        # Add average time per problem
-        results["total_time_beam_search"].append(time_per_problem)
+    # 修改 examples 字典
+    examples["completions"] = completions
+    examples["scores"] = scores
+    examples["pred"] = pred
+    examples["completion_tokens"] = completion_tokens  # 最终activate beam各自的token数
+    examples["total_time_beam_search"] = [time_per_problem] * num_problems
+    examples["llm_gen_time"] = [llm_gen_time / num_problems] * num_problems
+    examples["prm_score_time"] = [prm_score_time / num_problems] * num_problems
+    
+    # Token统计信息
+    examples["total_generated_tokens"] = [total_tokens_all_beams] * num_problems  # 总生成token数
+    examples["total_active_beam_tokens"] = [total_active_beam_tokens] * num_problems  # 最终activate beam总token数
+    examples["total_pruned_tokens"] = [total_pruned_tokens] * num_problems  # 被prune的beam总token数
+    
+    # 打印统计信息
+    logger.info(f"\n=== Official Dynamic Beam Search Statistics ===")
+    logger.info(f"总生成token数: {total_tokens_all_beams}")
+    logger.info(f"最终activate beam总token数: {total_active_beam_tokens}")
+    logger.info(f"被prune的beam总token数: {total_pruned_tokens}")
+    logger.info(f"平均每个问题的token数: {total_tokens_all_beams / num_problems:.2f}")
+    logger.info(f"总LLM生成时间: {llm_gen_time:.2f}s")
+    logger.info(f"总PRM评分时间: {prm_score_time:.2f}s")
+    logger.info(f"平均每个问题LLM时间: {llm_gen_time / num_problems:.2f}s")
+    logger.info(f"平均每个问题PRM时间: {prm_score_time / num_problems:.2f}s")
+    logger.info(f"=============================================\n")
+
+    logger.info(f"=================以下是新添加的方法=================\n")
 
     total_tokens = sum(tokens_per_prompt[p] for p in problems)
     total_beams = sum(beam_number_per_prompt[p] for p in problems)
     avg_tokens = total_tokens / num_problems if num_problems > 0 else 0
     avg_beams = total_beams / num_problems if num_problems > 0 else 0
     
-    logger.info(f"Total tokens for batch: {total_tokens}")
-    logger.info(f"Average tokens per problem: {avg_tokens:.2f}")
-    logger.info(f"Total beams for batch: {total_beams}")
-    logger.info(f"Average beams per problem: {avg_beams:.2f}")
+    logger.info(f"总生成token数: {total_tokens}")
+    logger.info(f"平均每个问题的token数: {avg_tokens:.2f}")
+    logger.info(f"总beam数: {total_beams}")
+    logger.info(f"平均每个问题的beam数: {avg_beams:.2f}")
 
-    return results
+    return examples

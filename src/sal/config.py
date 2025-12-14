@@ -23,7 +23,7 @@ from sal.utils.hub import get_dataset_revisions
 
 @dataclass
 class Config:
-    approach: Literal["best_of_n", "beam_search", "dvts", "beam_search_prune", "beam_search_dynamic", "dvts_dynamic"] = "best_of_n"
+    approach: Literal["best_of_n", "beam_search", "dvts", "beam_search_prune", "beam_search_dynamic", "dvts_dynamic", "beam_search_dynamic_official"] = "best_of_n"
     model_path: str = "meta-llama/Llama-3.2-1B-Instruct"
     gpu_memory_utilization: float = (
         0.2  # vllm is allocated 0.1 of GPU memory, the PRM uses the rest
@@ -74,7 +74,7 @@ class Config:
                 raise ValueError("n should be a multiple of beam_width")
             self.n_beams = self.n // self.beam_width
 
-        if self.approach == "beam_search" or self.approach == "beam_search_prune" or self.approach == "beam_search_dynamic" or self.approach == "beam_search_dynamic_plus":
+        if self.approach == "beam_search" or self.approach == "beam_search_prune" or self.approach == "beam_search_dynamic" or self.approach == "beam_search_dynamic_plus" or self.approach == "beam_search_dynamic_official":
             # TODO: implemented a batched version
             if self.search_batch_size != 1:
                 raise ValueError("search_batch_size should be 1 for beam_search")
