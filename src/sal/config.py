@@ -69,7 +69,7 @@ class Config:
     sort_completed: bool = False
 
     def __post_init__(self):
-        if self.approach == "dvts" or self.approach == "dvts_dynamic":
+        if self.approach == "dvts" or self.approach == "dvts_dynamic" or self.approach == "dvts_dynamic_plus":
             if self.n % self.beam_width != 0:
                 raise ValueError("n should be a multiple of beam_width")
             self.n_beams = self.n // self.beam_width
@@ -89,7 +89,7 @@ class Config:
                 )
             revisions = get_dataset_revisions(self.hub_dataset_id)
 
-            if self.approach == "beam_search" or self.approach == "dvts" or self.approach == "dvts_dynamic":
+            if self.approach == "beam_search" or self.approach == "dvts" or self.approach == "dvts_dynamic" or self.approach == "dvts_dynamic_plus":
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--m-{self.beam_width}--iters-{self.num_iterations}--look-{self.lookahead}--seed-{self.seed}--agg_strategy--{self.agg_strategy}"
             elif self.approach == "best_of_n":
                 self.revision = f"{self.dataset_name.replace('/', '_')}--T-{self.temperature}--top_p-{self.top_p}--n-{self.n}--seed-{self.seed}--agg_strategy-{self.agg_strategy}"

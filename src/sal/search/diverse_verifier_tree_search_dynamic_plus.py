@@ -1,0 +1,359 @@
+#!/usr/bin/env python
+# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import logging
+from collections import defaultdict
+
+import numpy as np
+from tqdm import tqdm
+from vllm import LLM, SamplingParams
+
+from sal.config import Config
+from sal.models.reward_models import PRM
+from sal.utils.score import aggregate_scores
+
+from .utils import Beam, build_conv, generate_k_steps
+
+logger = logging.getLogger()
+tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
+beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
+
+def _dvts_dynamic_plus(batch_of_prompts: list[str], config: Config, llm: LLM, prm: PRM):
+
+
+    sampling_params = SamplingParams(
+        temperature=config.temperature,
+        max_tokens=2048,
+        top_p=config.top_p,
+        stop=[
+            "\n\n"
+        ],  # we consider that a step in the problem is indicated by a double newline
+        include_stop_str_in_output=True,
+        n=1,
+    )
+
+    beams: list[Beam] = []
+    for prompt in batch_of_prompts:
+        for i in range(config.n_beams):
+            beams.append(
+                Beam(
+                    prompt=prompt,
+                    index=i,
+                    current_text="",
+                    next_texts=None,
+                    lookahead_texts=None,
+                    best_scores=[0.0],
+                    all_scores=[],
+                    previous_text=None,
+                    pruned=False,
+                    stop_reasons=None,
+                    history=[],
+                    completion_tokens=0,
+                )
+            )
+
+    for i in tqdm(range(config.num_iterations), desc="Beam search iterations"):
+        # generation
+        gen_beams = [b for b in beams if not b.pruned]
+        if len(gen_beams) == 0:
+            break
+
+        # 当前层使用的 beam 宽度：随深度从 config.beam_width 逐渐减小到 1
+        max_depth = max(config.num_iterations - 1, 1)
+        decay_ratio = 1.0 - i / max_depth
+        curr_beam_width = max(1, int(round(1 + (config.beam_width - 1) * decay_ratio)))
+
+        if i == config.num_iterations - 1:
+            curr_beam_width = config.beam_width
+            # last iteration, generate to EOS
+            sampling_params = SamplingParams(
+                temperature=config.temperature,
+                max_tokens=2048,
+                top_p=config.top_p,
+                n=1,
+            )
+
+        convs = [
+            build_conv(b.prompt, b.current_text, config.system_prompt)
+            for b in gen_beams
+        ]
+        continue_final_message = i > 0
+        add_generation_prompt = i == 0
+
+        tokenizer = llm.get_tokenizer()
+        # TODO: set the augmented template from a file
+        if config.custom_chat_template is not None:
+            tokenizer.chat_template = config.custom_chat_template
+        templated_convs = tokenizer.apply_chat_template(
+            convs,
+            add_generation_prompt=add_generation_prompt,
+            continue_final_message=continue_final_message,
+            tokenize=False,
+        )
+        lookahead = 0 if i == config.num_iterations - 1 else config.lookahead
+
+        logger.info(f"Iteration {i+1}: using beam width {curr_beam_width}")
+        gen_results = generate_k_steps(
+            templated_convs, lookahead, llm, sampling_params, curr_beam_width
+        )
+
+        prompts, completions = [], []
+        for beam, gen_result in zip(gen_beams, gen_results, strict=True):
+            beam.next_texts = gen_result.next_texts
+            beam.stop_reasons = gen_result.stop_reasons
+            beam.lookahead_texts = gen_result.lookahead_texts
+            beam.completion_tokens += gen_result.completion_tokens
+            tokens_per_prompt[beam.prompt] += gen_result.completion_tokens
+            beam_number_per_prompt[beam.prompt] += 1
+            if len(beam.next_texts) != curr_beam_width:
+                beam.pruned = True
+                # rarely ~1/1000 the model will generate few beams than expected. #TODO: investigate why
+                logger.warning(
+                    f"beam {beam.index} has {len(beam.next_texts)} completions (expected {curr_beam_width})"
+                )
+            prompts.append(beam.prompt)
+            completions.append([beam.current_text + t for t in beam.lookahead_texts])
+
+        # scoring and chose best generation per beam TODO: add option for selection across beams within the same prompt
+
+        all_scores = prm.score(prompts, completions)
+
+        current_step_scores = []
+        for beam, scores in zip(gen_beams, all_scores, strict=True):
+            agg_scores = [aggregate_scores(s, config.agg_strategy) for s in scores]
+            best_score_ind = np.argmax(agg_scores)
+            current_step_scores.append(agg_scores[best_score_ind])
+            
+            beam.all_scores = scores
+            beam.previous_text = beam.current_text
+            beam.current_text = beam.current_text + beam.next_texts[best_score_ind]
+            beam.history.append(beam.next_texts[best_score_ind])
+            beam.best_scores = scores[best_score_ind]
+            if (
+                beam.next_texts[best_score_ind] == ""
+                or beam.stop_reasons[best_score_ind] == "EOS"
+            ):
+                # stopped on EOS, prune
+                beam.pruned = True
+
+        if current_step_scores:
+            mean_score = np.mean(current_step_scores)
+            std_score = np.std(current_step_scores)
+            logger.info(f"Iteration {i+1}: Mean Score = {mean_score:.4f}, Std Dev = {std_score:.4f}")
+
+        # filter / prune
+        for beam in gen_beams:
+            if "boxed{" in beam.current_text:
+                beam.pruned = True
+
+        # # 每一层结束后，对每个 prompt 的 active beams 进行筛选，只保留 target_n_beams 个
+        # # 这样可以实现“从 n 降到 1”的效果，同时保证至少保留 1 个（如果还有活着的）
+        # target_n_beams = max(1, int(round(1 + (config.n_beams - 1) * decay_ratio)))
+        
+        # active_beams_by_prompt = defaultdict(list)
+        # for beam in gen_beams:
+        #     if not beam.pruned:
+        #         active_beams_by_prompt[beam.prompt].append(beam)
+        
+        # for prompt, p_beams in active_beams_by_prompt.items():
+        #     if len(p_beams) > target_n_beams:
+        #         # 按分数排序，保留前 target_n_beams 个
+        #         p_beams.sort(
+        #             key=lambda b: aggregate_scores(b.best_scores, config.agg_strategy),
+        #             reverse=True
+        #         )
+        #         # 剪掉多余的，但至少保留 target_n_beams 个（这里逻辑自然满足）
+        #         for b in p_beams[target_n_beams:]:
+        #             b.pruned = True
+
+        # 统计当前未被 prune 的 beams 数量
+        num_active_beams = sum(1 for b in beams if not b.pruned)
+        logger.info(
+            f"After iteration {i+1}, active beams: {num_active_beams}/{len(beams)}"
+        )
+    # 直接返回最后一轮的 beams；每个 beam 代表一条完整路径
+    return beams
+
+
+def dvts_dynamic_plus(examples, config: Config, llm: LLM, prm: PRM):
+    problems = examples["problem"]
+    pre = pre_score_problems(examples, config, llm, prm)
+    logger.info("Pre-scoring done, starting DVTS...")
+    logger.info(f"Estimated difficulties: {pre['difficulty_score']}")
+    beam_results = _dvts_dynamic_plus(problems, config, llm, prm)
+
+    # group together alike beams and store in the dataset
+    grouped_results = defaultdict(list)
+    for results in beam_results:
+        grouped_results[results.prompt].append(results)
+
+    results = {"completions": [], "pred": [], "completion_tokens": [], "scores": [], "beam_counts_total": []}
+
+    for p in problems:
+        beams = grouped_results[p]
+        results["completions"].append([b.current_text for b in beams])
+        results["pred"].append(
+            beams[
+                np.argmax(
+                    [
+                        aggregate_scores(b.best_scores, config.agg_strategy)
+                        for b in beams
+                    ]
+                )
+            ].current_text
+        )
+        results["scores"].append([b.best_scores for b in beams])
+        # 每个 sample 的总生成 token 数：该样本所有 beam 的 completion_tokens 之和
+        # results["completion_tokens"].append(
+        #     [int(getattr(b, "completion_tokens", 0)) for b in beams]
+        # )
+        # logger.info(f"Total tokens for problem: {p} is {tokens_per_prompt[p]}")
+        results["completion_tokens"].append(int(tokens_per_prompt[p]))
+        results["beam_counts_total"].append(int(beam_number_per_prompt[p]))
+        # logger.info(f"Number of beams for problem: {p} is {beam_number_per_prompt[p]}")
+        logger.info(f"Total tokens for problem is {tokens_per_prompt[p]}")
+        logger.info(f"Number of beams for problem is {beam_number_per_prompt[p]}")
+        
+    # TODO: construct and store the tree
+
+    return results
+
+
+
+def pre_score_problems(
+    examples,
+    config: Config,
+    llm: LLM,
+    prm: PRM,
+    n_candidates: int = 4,
+):
+    """Pre-score problems with PRM before running DVTS/beam search.
+
+    For each problem, generate ``n_candidates`` completions with the base LLM,
+    score them with the PRM, and compute a simple difficulty score.
+
+    Returns a dict with fields:
+        - ``completions``: list[list[str]] per problem
+        - ``scores``: list[list[float]] PRM scalar scores per completion
+        - ``difficulty_score``: list[float], higher means harder (1 - max_score)
+    """
+
+    problems = examples["problem"]
+
+    sampling_params = SamplingParams(
+        temperature=config.temperature,
+        max_tokens=2048,
+        top_p=config.top_p,
+        n=n_candidates,
+        stop=["\n\n"],
+        include_stop_str_in_output=True,
+    )
+
+    tokenizer = llm.get_tokenizer()
+    if config.custom_chat_template is not None:
+        tokenizer.chat_template = config.custom_chat_template
+
+    convs = [
+        build_conv(p, response="", system_prompt=config.system_prompt)
+        for p in problems
+    ]
+    templated_convs = tokenizer.apply_chat_template(
+        convs,
+        add_generation_prompt=True,
+        continue_final_message=False,
+        tokenize=False,
+    )
+
+    llm_outputs = llm.generate(templated_convs, sampling_params, use_tqdm=False)
+
+    # 收集每道题的 n_candidates 个 completion 文本
+    all_completions: list[list[str]] = []
+    for output in llm_outputs:
+        all_completions.append([o.text for o in output.outputs])
+
+    # PRM 打分接口：prompts: list[str], completions: list[list[str]]
+    all_scores = prm.score(problems, all_completions)
+
+    results = {"completions": [], "scores": [], "difficulty_score": []}
+
+    for scores, completions in zip(all_scores, all_completions, strict=True):
+        # scores: list[list[float]]，对每个 completion 是一个打分序列
+        scalar_scores = [
+            aggregate_scores(s, config.agg_strategy) for s in scores
+        ]
+
+        if len(scalar_scores) == 0:
+            diff = 1.0
+        else:
+            max_score = float(max(scalar_scores))
+            # 简单难度指标：1 - max_score，越大表示越难
+            diff = float(1.0 - max_score)
+
+        results["completions"].append(completions)
+        results["scores"].append(scalar_scores)
+        results["difficulty_score"].append(diff)
+
+    return results
+
+
+# def estimate_difficulty(examples, config: Config, llm: LLM, prm: PRM, n_candidates: int | None = None):
+#     """Estimate problem difficulty using PRM scores on multiple LLM candidates.
+
+#     Returns a dict with per-problem completions, scores and a scalar difficulty_score.
+#     """
+
+#     problems = examples["problem"]
+
+#     # 直接复用 dvts 的生成和打分逻辑
+#     beam_results = _dvts(problems, config, llm, prm)
+
+#     grouped_results = defaultdict(list)
+#     for b in beam_results:
+#         grouped_results[b.prompt].append(b)
+
+#     if n_candidates is None:
+#         n_candidates = config.n_beams * config.beam_width
+
+#     out = {"completions": [], "scores": [], "difficulty_score": []}
+
+#     for p in problems:
+#         beams = grouped_results[p]
+
+#         # 展平为 (completion, score_scalar) 列表
+#         cand = []
+#         for b in beams:
+#             score_scalar = aggregate_scores(b.best_scores, config.agg_strategy)
+#             cand.append((b.current_text, score_scalar))
+
+#         # 按 PRM 分数从高到低排序，截取前 n_candidates 个
+#         cand.sort(key=lambda x: x[1], reverse=True)
+#         cand = cand[:n_candidates]
+
+#         completions = [c for c, _ in cand]
+#         scores = [s for _, s in cand]
+
+#         if len(scores) == 0:
+#             diff = 1.0
+#         else:
+#             # 简单难度指标：1 - max_score，值越大表示越难
+#             max_score = float(max(scores))
+#             diff = float(1.0 - max_score)
+
+#         out["completions"].append(completions)
+#         out["scores"].append(scores)
+#         out["difficulty_score"].append(diff)
+
+#     return out

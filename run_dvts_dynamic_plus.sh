@@ -1,3 +1,4 @@
+
 export SEARCHANDLEARN=/home/zx1875/efficientai/search-and-learn
 export EVALDIR=/home/zx1875/efficientai/Qwen2.5-Math/evaluation/
 
@@ -9,15 +10,14 @@ conda activate sal || { echo "activate conda env failed"; exit 3; }
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
 
-
 export MODEL=Llama-3.2-1B-Instruct
-export APPROACH=beam_search_dynamic_plus
+export APPROACH=dvts_dynamic_plus
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=500
-export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
+export SAMPLES=300
 
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
 
 
@@ -31,7 +31,9 @@ for n in 4 16; do
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=$SAMPLES \
-        --seed=$SEED
+        --seed=$SEED \
+        --prm_batch_size=4 \
+        --search_batch_size=25
     
     echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
@@ -52,4 +54,3 @@ for n in 4 16; do
 done
 
 
-echo "job finished."

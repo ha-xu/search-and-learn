@@ -16,7 +16,7 @@ export APPROACH=beam_search
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=50
+export SAMPLES=500
 
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 
@@ -25,9 +25,9 @@ export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_s
 echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
 
 # Clear previous results file
-# echo > $RESULTCOLLECTIONFILE
+echo > $RESULTCOLLECTIONFILE
 
-for n in 16 ; do
+for n in 4 16 ; do
     cd $SEARCHANDLEARN
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
@@ -36,21 +36,21 @@ for n in 16 ; do
         --prm_batch_size=2 \
 
     
-    # echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+    echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
-    # echo $RESULTDIR/beam_search_completions.jsonl
+    echo $RESULTDIR/beam_search_completions.jsonl
 
-    # Evaluation of the accuracy
-    # cd $EVALDIR
-    # conda create -n qwen-math python=3.11 && conda activate qwen-math
-    # cd latex2sympy
-    # pip install -e .
-    # cd ..
-    # pip install -r requirements.txt 
-    # python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
-    # conda deactivate
-    # # print time
-    # python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    Evaluation of the accuracy
+    cd $EVALDIR
+    conda create -n qwen-math python=3.11 && conda activate qwen-math
+    cd latex2sympy
+    pip install -e .
+    cd ..
+    pip install -r requirements.txt 
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    conda deactivate
+    # print time
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 
