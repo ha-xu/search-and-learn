@@ -38,9 +38,9 @@ for n in 4 16 ; do
     
     echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
-    echo $RESULTDIR/beam_search_completions.jsonl
+    # echo $RESULTDIR/beam_search_completions.jsonl
 
-    Evaluation of the accuracy
+    # Evaluation of the accuracy
     cd $EVALDIR
     conda create -n qwen-math python=3.11 && conda activate qwen-math
     cd latex2sympy
