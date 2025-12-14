@@ -16,7 +16,7 @@ export APPROACH=beam_search_dynamic_official
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
 export SAMPLES=100
-export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL
 
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
 
@@ -27,7 +27,7 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 echo > $RESULTCOLLECTIONFILE
 
 for n in 4; do
-    for beam_decay_temp in 0.5 0.7 0.8 0.9 1.0; do
+    for beam_decay_temp in  0.9 1.0; do
         cd $SEARCHANDLEARN
         python scripts/test_time_compute.py $CONFIG \
             --n=$n \
