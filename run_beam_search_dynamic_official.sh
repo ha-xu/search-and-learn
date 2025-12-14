@@ -27,7 +27,7 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 # echo > $RESULTCOLLECTIONFILE
 
 for n in 4; do
-    for beam_decay_temp in 0.4 0.6 0.9 1.0; do
+    for beam_decay_temp in 0.3 0.4 0.6 ; do
         cd $SEARCHANDLEARN
         python scripts/test_time_compute.py $CONFIG \
             --n=$n \
