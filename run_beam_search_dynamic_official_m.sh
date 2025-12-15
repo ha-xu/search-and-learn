@@ -37,7 +37,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 IMAGE_PATH=/scratch/work/public/singularity/cuda12.1.1-cudnn8.9.0-devel-ubuntu22.04.2.sif
 
-for n in 4 16; do
+for n in 16; do
     for beam_decay_temp in 1; do
         cd $SEARCHANDLEARN
         singularity exec --nv $IMAGE_PATH $PYTHON_EXEC scripts/test_time_compute.py $CONFIG \

@@ -13,3 +13,4 @@ beam_decay_temperature: 1.0  # 调整衰减曲线（仅用于 exp 策略）
 beam_warmup_steps: 5         # warmup 步数
 num_samples: 10
 num_iterations: 40           # beam search 迭代次数
+output_dir: /home/zx1875/efficientai/search-and-learn/data/meta-llama/Llama-3.2-3B-Instruct/
