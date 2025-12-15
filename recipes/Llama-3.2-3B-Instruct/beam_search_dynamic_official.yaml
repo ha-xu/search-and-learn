@@ -1,6 +1,6 @@
 # Official Dynamic Beam Search Configuration
 # 只动态调整采样的 n 值，保持 beam width 固定为 config.n
-model_path: /home/zx1875/efficientai/models/Llama-3.2-3B-Instruct-W4A16-GPTQModifier-math
+model_path: /home/zx1875/efficientai/Llama-3.2-3B-Instruct-W4A16-GPTQModifier-math
 
 filter_duplicates: true
 approach: beam_search_dynamic_official
