@@ -72,8 +72,8 @@ def save_dataset(dataset, config):
             config.output_dir = f"data/{config.model_path}"
         Path(config.output_dir).mkdir(parents=True, exist_ok=True)
         dataset.to_json(
-            f"{config.output_dir}/{config.approach}_completions_{config.n}_beam_decay_temperature_{config.beam_decay_temperature}.jsonl", lines=True
+            f"{config.output_dir}/{config.approach}_completions_{config.n}_{config.model_path}_{config.num_samples}.jsonl", lines=True
         )
         logger.info(
-            f"Saved completions to {config.output_dir}/{config.approach}_completions_{config.n}_beam_decay_temperature_{config.beam_decay_temperature}.jsonl"
+            f"Saved completions to {config.output_dir}/{config.approach}_completions_{config.n}_{config.model_path}_{config.num_samples}.jsonl"
         )
