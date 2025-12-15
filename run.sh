@@ -6,4 +6,4 @@
 
 # bash run_print_scores.sh
 
-bash run_beam_search_dynamic_official.sh
+bash run_beam_search_dynamic_official_m.sh
