@@ -7,6 +7,10 @@ conda activate sal || { echo "activate conda env failed"; exit 3; }
 
 # login to huggingface
 huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
+
+# Get python executable path
+PYTHON_EXEC=$(which python)
+
 # run your script
 
 
@@ -17,6 +21,7 @@ export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
 export SAMPLES=500
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL
+mkdir -p $RESULTDIR
 
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
 
@@ -35,7 +40,7 @@ IMAGE_PATH=/scratch/work/public/singularity/cuda12.1.1-cudnn8.9.0-devel-ubuntu22
 for n in 4 16; do
     for beam_decay_temp in 1; do
         cd $SEARCHANDLEARN
-        singularity exec --nv $IMAGE_PATH python scripts/test_time_compute.py $CONFIG \
+        singularity exec --nv $IMAGE_PATH $PYTHON_EXEC scripts/test_time_compute.py $CONFIG \
                 --n=$n \
                 --num_samples=$SAMPLES \
                 --seed=$SEED \
