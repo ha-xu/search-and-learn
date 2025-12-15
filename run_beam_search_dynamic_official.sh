@@ -28,14 +28,14 @@ echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED,
 
 for n in 4 16; do
     for beam_decay_temp in 1; do
-        cd $SEARCHANDLEARN
-        python scripts/test_time_compute.py $CONFIG \
-            --n=$n \
-            --num_samples=$SAMPLES \
-            --seed=$SEED \
-            --beam_decay_temperature=$beam_decay_temp
+        # cd $SEARCHANDLEARN
+        # python scripts/test_time_compute.py $CONFIG \
+        #     --n=$n \
+        #     --num_samples=$SAMPLES \
+        #     --seed=$SEED \
+        #     --beam_decay_temperature=$beam_decay_temp
         
-        echo "Evaluation results for CONFIG=$CONFIG, n=$n, beam_decay_temperature=$beam_decay_temp, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
+        # echo "Evaluation results for CONFIG=$CONFIG, n=$n, beam_decay_temperature=$beam_decay_temp, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
         # echo $RESULTDIR/beam_search_completions.jsonl
 
