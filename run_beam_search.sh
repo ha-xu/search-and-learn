@@ -25,7 +25,7 @@ export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_s
 echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
 
 # Clear previous results file
-echo > $RESULTCOLLECTIONFILE
+# echo > $RESULTCOLLECTIONFILE
 
 for n in 4 16 ; do
     cd $SEARCHANDLEARN
