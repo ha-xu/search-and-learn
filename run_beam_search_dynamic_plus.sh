@@ -15,7 +15,7 @@ export APPROACH=beam_search_dynamic_plus
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
-export SAMPLES=500
+export SAMPLES=100
 export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
 
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
@@ -44,10 +44,10 @@ for n in 4 16; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 

@@ -31,7 +31,7 @@ from sal.utils.score import aggregate_scores
 tokens_per_prompt = defaultdict(int)  # key: prompt(str), value: total tokens
 beam_number_per_prompt = defaultdict(int)  # key: prompt(str), value: number of beams
 
-def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> list[Beam]:
+def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: PRM) -> tuple[list[Beam], dict]:
     sampling_params = SamplingParams(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -41,6 +41,10 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
         n=1,
         logprobs=1,
     )
+
+    # 初始化计时器
+    total_llm_time = 0.0
+    total_prm_time = 0.0
 
     beams: list[Beam] = []
     for prompt in batch_of_prompts:
@@ -129,9 +133,14 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             tokenize=False,
         )
         lookahead = 0 if i == config.num_iterations - 1 else config.lookahead
+        
+        # 计时 LLM 生成
+        t_llm_start = time.time()
         gen_results = generate_k_steps(
             templated_convs, lookahead, llm, sampling_params, 1
         )
+        t_llm_end = time.time()
+        total_llm_time += (t_llm_end - t_llm_start)
 
         prompts, completions = [], []
         for beam, gen_result in zip(active_beams, gen_results, strict=True):
@@ -154,7 +163,11 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
             prompts.append(beam.prompt)
             completions.append([beam.current_text])
 
+        # 计时 PRM 评分
+        t_prm_start = time.time()
         scores = prm.score(prompts, completions)
+        t_prm_end = time.time()
+        total_prm_time += (t_prm_end - t_prm_start)
 
         agg_scores = [
             [aggregate_scores(s, config.agg_strategy) for s in score]
@@ -216,16 +229,26 @@ def _beam_search_dynamic_plus(batch_of_prompts, config: Config, llm: LLM, prm: P
         ]
         completed_beams = extended_completed_beams
 
-    return completed_beams
+    timing_info = {
+        'llm_time': total_llm_time,
+        'prm_time': total_prm_time
+    }
+
+    return completed_beams, timing_info
 
 
 def beam_search_dynamic_plus(examples, config: Config, llm: LLM, prm: PRM):
     problems = examples["problem"]
 
     start_time = time.perf_counter()
-    beam_results = _beam_search_dynamic_plus(problems, config, llm, prm)
+    beam_results, timing_info = _beam_search_dynamic_plus(problems, config, llm, prm)
     end_time = time.perf_counter()
     total_time = end_time - start_time
+    
+    # 提取计时信息
+    llm_gen_time = timing_info['llm_time']
+    prm_score_time = timing_info['prm_time']
+
     # Group together alike beams and store in the dataset
     grouped_results = defaultdict(list)
     for results in beam_results:
@@ -251,6 +274,18 @@ def beam_search_dynamic_plus(examples, config: Config, llm: LLM, prm: PRM):
 
         # Add average time per problem
         results["total_time_beam_search"].append(time_per_problem)
+
+    # 添加额外的计时信息到 results
+    results["llm_gen_time"] = [llm_gen_time / num_problems] * num_problems
+    results["prm_score_time"] = [prm_score_time / num_problems] * num_problems
+
+    # 打印统计信息
+    logger.info(f"\n=== Beam Search Statistics ===")
+    logger.info(f"总LLM生成时间: {llm_gen_time:.2f}s")
+    logger.info(f"总PRM评分时间: {prm_score_time:.2f}s")
+    logger.info(f"平均每个问题LLM时间: {llm_gen_time / num_problems:.2f}s")
+    logger.info(f"平均每个问题PRM时间: {prm_score_time / num_problems:.2f}s")
+    logger.info(f"=============================================\n")
 
     total_tokens = sum(tokens_per_prompt[p] for p in problems)
     total_beams = sum(beam_number_per_prompt[p] for p in problems)
