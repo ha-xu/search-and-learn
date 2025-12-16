@@ -47,10 +47,10 @@ for n in 4 16 ; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 
