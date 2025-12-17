@@ -10,7 +10,7 @@ huggingface-cli login --token $(cat /home/zx1875/efficientai/huggingface.txt)
 # run your script
 
 
-export MODEL=Llama-3.2-1B-Instruct
+export MODEL=Llama-3.2-3B-Instruct
 export APPROACH=beam_search_dynamic
 
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
