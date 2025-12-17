@@ -16,7 +16,7 @@ export APPROACH=beam_search_dynamic
 export CONFIG=recipes/$MODEL/$APPROACH.yaml
 export SEED=0 
 export SAMPLES=500
-export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL/
+export RESULTDIR=/home/zx1875/efficientai/search-and-learn/data/meta-llama/$MODEL
 
 export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_samples_${SAMPLES}.txt
 
@@ -31,7 +31,8 @@ for n in 4 16; do
     python scripts/test_time_compute.py $CONFIG \
         --n=$n \
         --num_samples=$SAMPLES \
-        --seed=$SEED
+        --seed=$SEED \
+        --prm_batch_size=1 \
     
     echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
