@@ -24,15 +24,22 @@ export RESULTCOLLECTIONFILE=$RESULTDIR/results_collection_${MODEL}_${APPROACH}_s
 echo "Running with MODEL=$MODEL, APPROACH=$APPROACH, CONFIG=$CONFIG, SEED=$SEED, SAMPLES=$SAMPLES"
 
 # Clear previous results file
-echo > $RESULTCOLLECTIONFILE
 
 for n in 4 16; do
     cd $SEARCHANDLEARN
-    python scripts/test_time_compute.py $CONFIG \
-        --n=$n \
-        --num_samples=$SAMPLES \
-        --seed=$SEED \
-        --prm_batch_size=1 \
+    while true; do
+        python scripts/test_time_compute.py $CONFIG \
+            --n=$n \
+            --num_samples=$SAMPLES \
+            --seed=$SEED \
+            --prm_batch_size=1
+        
+        if [ $? -eq 0 ]; then
+            break
+        fi
+        echo "Error encountered (likely OOM). Retrying in 5 seconds..."
+        sleep 5
+    done
     
     echo "Evaluation results for CONFIG=$CONFIG, n=$n, seed=$SEED, samples=$SAMPLES" >> $RESULTCOLLECTIONFILE
 
@@ -45,10 +52,10 @@ for n in 4 16; do
     pip install -e .
     cd ..
     pip install -r requirements.txt 
-    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python evaluate.py --file_path $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
     conda deactivate
     # print time
-    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}.jsonl >> $RESULTCOLLECTIONFILE
+    python $SEARCHANDLEARN/staticalprint.py $RESULTDIR/${APPROACH}_completions_${n}_${SAMPLES}.jsonl >> $RESULTCOLLECTIONFILE
 
 done
 
